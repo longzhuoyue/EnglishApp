@@ -1,6 +1,7 @@
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
+const vm = require("node:vm");
 const { nextInterval, nextReview, isDue } = require("./app.js");
 
 const words = JSON.parse(fs.readFileSync(path.join(__dirname, "words.json"), "utf8"));
@@ -16,3 +17,29 @@ for (const file of ["index.html", "app.js", "words.json", "manifest.webmanifest"
   assert.ok(fs.existsSync(path.join(__dirname, file)), `${file} is missing`);
 }
 console.log("WordSpring web checks passed");
+
+// Exercise the real startup code on a browser surface missing Object.values.
+// The previous failure showed all 20 words but left stats blank and the start button disabled.
+const ids = Object.fromEntries(
+  ["start", "start-title", "start-detail", "due-count", "today-count", "total-count", "library-count", "library", "close", "reveal", "again", "remember", "speak-current"].map(id => [id, element()])
+);
+function element() {
+  return { textContent: "", disabled: true, style: {}, children: [], addEventListener() {}, setAttribute() {}, append(...nodes) { this.children.push(...nodes); } };
+}
+const context = vm.createContext({
+  document: { getElementById: id => ids[id], createElement: element, addEventListener() {} },
+  navigator: {},
+  localStorage: { getItem: () => null },
+  setInterval() {},
+  fetch: async () => ({ ok: true, json: async () => words }),
+  console
+});
+vm.runInContext("Object.values = undefined", context);
+vm.runInContext(fs.readFileSync(path.join(__dirname, "app.js"), "utf8"), context);
+setImmediate(() => {
+  assert.equal(ids.library.children.length, 20);
+  assert.equal(ids["due-count"].textContent, 20);
+  assert.equal(ids["start-title"].textContent, "开始今日学习");
+  assert.equal(ids.start.disabled, false);
+  console.log("WordSpring startup check passed");
+});

@@ -13,7 +13,7 @@ function nextReview(now, previous, remembered) {
 }
 
 function isDue(record, now) {
-  return !record || !Number.isFinite(record.nextReview) || record.nextReview <= now;
+  return !record || typeof record.nextReview !== "number" || record.nextReview <= now;
 }
 
 if (typeof module !== "undefined") module.exports = { nextInterval, nextReview, isDue };
@@ -50,7 +50,10 @@ if (typeof document !== "undefined") {
 
   function renderHome() {
     const due = dueWords();
-    const today = Object.values(state.records).filter(record => record && new Date(record.lastReviewed).toDateString() === new Date().toDateString()).length;
+    const today = Object.keys(state.records).filter(key => {
+      const record = state.records[key];
+      return record && new Date(record.lastReviewed).toDateString() === new Date().toDateString();
+    }).length;
     byId("due-count").textContent = due.length;
     byId("today-count").textContent = today;
     byId("total-count").textContent = Object.keys(state.records).length;
@@ -151,10 +154,10 @@ if (typeof document !== "undefined") {
       }
       renderHome();
     })
-    .catch(() => {
-      byId("start-title").textContent = "词库加载失败";
-      byId("start-detail").textContent = "请连接网络后刷新";
+    .catch(error => {
+      byId("start-title").textContent = state.words.length ? "页面初始化失败" : "词库加载失败";
+      byId("start-detail").textContent = state.words.length ? String(error) : "请连接网络后刷新";
     });
 
-  if ("serviceWorker" in navigator) navigator.serviceWorker.register("./sw.js").catch(() => {});
+  if ("serviceWorker" in navigator) navigator.serviceWorker.register("./sw.js?v=2").catch(() => {});
 }
