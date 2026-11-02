@@ -18,7 +18,7 @@ function isDue(record, now) {
 
 if (typeof module !== "undefined") module.exports = { nextInterval, nextReview, isDue };
 
-if (typeof document !== "undefined") {
+function startApp() {
   const byId = id => document.getElementById(id);
   const state = { words: [], records: {}, session: [], index: 0 };
 
@@ -159,5 +159,7 @@ if (typeof document !== "undefined") {
       byId("start-detail").textContent = state.words.length ? String(error) : "请连接网络后刷新";
     });
 
-  if ("serviceWorker" in navigator) navigator.serviceWorker.register("./sw.js?v=2").catch(() => {});
+  if ("serviceWorker" in navigator) navigator.serviceWorker.register("./sw.js?v=3").catch(() => {});
 }
+
+if (typeof document !== "undefined") startApp();
