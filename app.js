@@ -159,7 +159,7 @@ function startApp() {
       byId("start-detail").textContent = state.words.length ? String(error) : "请连接网络后刷新";
     });
 
-  if ("serviceWorker" in navigator) navigator.serviceWorker.register("./sw.js?v=4").catch(() => {});
+  if ("serviceWorker" in navigator) navigator.serviceWorker.register("./sw.js?v=5").catch(() => {});
 }
 
 if (typeof document !== "undefined") startApp();

@@ -67,6 +67,22 @@
     .kicker { margin: 0 0 12px; color: #637071; font-size: 12px; font-weight: 800; letter-spacing: 1.5px; }
     .course-card h2 { margin: 0 0 8px; font-size: 25px; }
     .course-card p { color: #657076; line-height: 1.5; }
+    .speaking-card { margin: 18px 0; padding: 24px; border-radius: 26px; color: white; background: #213c4b; }
+    .speaking-card h2 { margin: 0 0 8px; font-size: 24px; }
+    .speaking-card p { color: #d0dde1; line-height: 1.5; }
+    .speaking-card .kicker { color: #c9ef57; }
+    .speaking-card button { width: 100%; min-height: 50px; border-radius: 14px; color: #14212d; background: #c9ef57; font-weight: 750; }
+    .speaking-card button:disabled { opacity: .6; }
+    .speaking-scenes { margin: 14px 0; border-radius: 20px; background: white; }
+    .speaking-scenes summary { padding: 19px; font-weight: 750; cursor: pointer; }
+    .speaking-scenes .day-row small { line-height: 1.4; }
+    .speaking-prompt { padding: 18px; border-radius: 18px; background: #edf2e7; }
+    .speaking-prompt strong { display: block; font-size: 23px; line-height: 1.35; }
+    .speaking-target { margin: 22px 0; font-size: 24px; line-height: 1.35; }
+    .speaking-target small { display: block; margin-top: 8px; font-size: 15px; font-weight: 400; color: #667078; }
+    .speaking-tools { display: flex; flex-wrap: wrap; gap: 9px; margin: 20px 0 8px; }
+    .speaking-tools button { min-height: 44px; }
+    .speaking-feedback { min-height: 45px; padding: 12px; border-radius: 12px; background: #f4f6ee; line-height: 1.5; }
     .course-button, .primary, .secondary { min-height: 52px; border-radius: 16px; font-weight: 700; }
     .course-button, .primary { color: #14212d; background: #c9ef57; }
     .course-button { width: 100%; margin-top: 8px; }
@@ -122,8 +138,9 @@
     .done-mark { display: grid; place-items: center; width: 64px; height: 64px; margin: 12px 0 22px; border-radius: 20px; background: #c9ef57; font-size: 32px; }
     audio { width: 100%; margin-top: 14px; }
   </style>
-  <script src="./app.js?v=4" defer></script>
-  <script src="./course.js?v=4" defer></script>
+  <script src="./app.js?v=5" defer></script>
+  <script src="./course.js?v=5" defer></script>
+  <script src="./speaking.js?v=5" defer></script>
 </head>
 <body>
   <main class="shell">
@@ -136,6 +153,13 @@
       <p id="course-detail">请稍候</p>
       <button class="course-button" id="course-start" disabled>开始课程 →</button>
     </section>
+    <section class="speaking-card" aria-label="口语专项">
+      <p class="kicker">口语专项 · 随时练</p>
+      <h2>开口说英语</h2>
+      <p id="speaking-summary">正在加载练习</p>
+      <button id="speaking-start" disabled>开始口语练习 →</button>
+    </section>
+    <details class="speaking-scenes"><summary>选择口语场景</summary><div class="day-list" id="speaking-scenes"></div></details>
     <div class="course-review" id="course-review" hidden><div><strong id="course-review-count">0 句待复习</strong><span>把学过的表达再说一遍</span></div><button id="course-review-start">开始复习</button></div>
     <details class="course-outline"><summary>查看七天课程</summary><div class="day-list" id="course-days"></div></details>
     <h2 class="small-heading">拓展词库</h2>
@@ -147,8 +171,17 @@
     </div>
     <button class="start" id="start" disabled><span><strong id="start-title">正在加载</strong><small id="start-detail">请稍候</small></span><span class="start-arrow" aria-hidden="true">→</span></button>
     <details class="extra"><summary>查看拓展词库 <span id="library-count"></span></summary><div class="extra-content" id="library"></div></details>
-    <details class="backup"><summary>学习进度备份</summary><div class="backup-content"><p>备份包含课程与拓展词库进度。点击导出后可复制文本保存；恢复时粘贴备份文本再点击导入。</p><textarea id="backup-text" aria-label="进度备份文本"></textarea><div class="backup-actions"><button id="backup-export">导出并复制</button><button id="backup-import">导入备份</button></div><p id="backup-message" role="status"></p></div></details>
+    <details class="backup"><summary>学习进度备份</summary><div class="backup-content"><p>备份包含课程、口语专项与拓展词库进度。点击导出后可复制文本保存；恢复时粘贴备份文本再点击导入。</p><textarea id="backup-text" aria-label="进度备份文本"></textarea><div class="backup-actions"><button id="backup-export">导出并复制</button><button id="backup-import">导入备份</button></div><p id="backup-message" role="status"></p></div></details>
   </main>
+
+  <section class="overlay" id="speaking-view" aria-label="口语练习" hidden>
+    <div class="overlay-inner">
+      <div class="overlay-top"><strong id="speaking-title"></strong><button id="speaking-close">关闭</button></div>
+      <div class="lesson-progress" id="speaking-position"></div>
+      <div class="lesson-panel" id="speaking-content"></div>
+      <div class="lesson-footer"><button class="primary" id="speaking-next">我已练过，下一句 →</button></div>
+    </div>
+  </section>
 
   <section class="overlay" id="lesson-view" aria-label="课程学习" hidden>
     <div class="overlay-inner">

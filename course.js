@@ -1,5 +1,6 @@
 const COURSE_KEY = "wordspring-course-v1";
 const WORD_REVIEW_KEY = "wordspring-review-v1";
+const SPEAKING_REVIEW_KEY = "wordspring-speaking-v1";
 
 function cleanAnswer(text) {
   return text.toLowerCase().replace(/[.,!?']/g, "").replace(/\s+/g, " ").trim();
@@ -325,7 +326,7 @@ function startCourse() {
 
   byId("backup-export").addEventListener("click", async () => {
     try {
-      const payload = { format: "wordspring-backup-v1", course: progress, wordReviews: JSON.parse(localStorage.getItem(WORD_REVIEW_KEY) || "{}") };
+      const payload = { format: "wordspring-backup-v1", course: progress, wordReviews: JSON.parse(localStorage.getItem(WORD_REVIEW_KEY) || "{}"), speaking: JSON.parse(localStorage.getItem(SPEAKING_REVIEW_KEY) || "null") };
       const text = JSON.stringify(payload);
       byId("backup-text").value = text;
       byId("backup-text").select();
@@ -336,16 +337,19 @@ function startCourse() {
   byId("backup-import").addEventListener("click", () => {
     try {
       const payload = JSON.parse(byId("backup-text").value);
-      if (payload.format !== "wordspring-backup-v1" || !validProgress(payload.course) || !payload.wordReviews || typeof payload.wordReviews !== "object" || Array.isArray(payload.wordReviews)) throw new Error("格式不正确");
+      if (payload.format !== "wordspring-backup-v1" || !validProgress(payload.course) || !payload.wordReviews || typeof payload.wordReviews !== "object" || Array.isArray(payload.wordReviews) || payload.speaking != null && !validSpeakingProgress(payload.speaking)) throw new Error("格式不正确");
       if (!confirm("导入会替换这台设备上现有的学习进度。确定继续吗？")) return;
       const oldCourse = localStorage.getItem(COURSE_KEY);
       const oldWords = localStorage.getItem(WORD_REVIEW_KEY);
+      const oldSpeaking = localStorage.getItem(SPEAKING_REVIEW_KEY);
       try {
         localStorage.setItem(COURSE_KEY, JSON.stringify(payload.course));
         localStorage.setItem(WORD_REVIEW_KEY, JSON.stringify(payload.wordReviews));
+        if (payload.speaking != null) localStorage.setItem(SPEAKING_REVIEW_KEY, JSON.stringify(payload.speaking));
       } catch (error) {
         if (oldCourse === null) localStorage.removeItem(COURSE_KEY); else localStorage.setItem(COURSE_KEY, oldCourse);
         if (oldWords === null) localStorage.removeItem(WORD_REVIEW_KEY); else localStorage.setItem(WORD_REVIEW_KEY, oldWords);
+        if (oldSpeaking === null) localStorage.removeItem(SPEAKING_REVIEW_KEY); else localStorage.setItem(SPEAKING_REVIEW_KEY, oldSpeaking);
         throw error;
       }
       location.reload();
