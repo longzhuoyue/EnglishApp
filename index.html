@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#14212d">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="词芽">
+  <link rel="apple-touch-icon" href="./icon-180.png">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <title>词芽 WordSpring</title>
+  <style>
+    :root { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: #14212d; background: #f5f5f0; }
+    * { box-sizing: border-box; }
+    body { margin: 0; }
+    button { font: inherit; cursor: pointer; border: 0; }
+    button:focus-visible { outline: 3px solid #3c6578; outline-offset: 3px; }
+    .shell { max-width: 620px; margin: auto; padding: calc(env(safe-area-inset-top) + 24px) 24px calc(env(safe-area-inset-bottom) + 32px); }
+    .brand { display: flex; align-items: center; justify-content: space-between; font-size: 11px; font-weight: 800; letter-spacing: 2px; }
+    .mark { display: grid; place-items: center; width: 48px; height: 48px; border-radius: 15px; background: #c9ef57; font-size: 27px; letter-spacing: 0; }
+    h1 { margin: 26px 0 10px; font-size: clamp(31px, 8vw, 38px); line-height: 1.17; letter-spacing: -1px; }
+    .sub { margin: 0; color: #667078; }
+    .stats { display: flex; margin: 29px 0 20px; padding: 23px 0; border-radius: 26px; color: white; background: #14212d; }
+    .stat { flex: 1; text-align: center; }
+    .stat + .stat { border-left: 1px solid #ffffff3d; }
+    .stat strong { display: block; font-size: 29px; }
+    .stat span { display: block; margin-top: 5px; color: #c2c9cc; font-size: 12px; }
+    .start { display: flex; align-items: center; justify-content: space-between; width: 100%; min-height: 104px; padding: 22px; border-radius: 24px; text-align: left; color: #14212d; background: #c9ef57; }
+    .start:disabled { opacity: .65; cursor: default; }
+    .start strong { display: block; font-size: 20px; }
+    .start small { display: block; margin-top: 7px; font-size: 14px; }
+    .start-arrow { display: grid; place-items: center; width: 43px; height: 43px; border-radius: 50%; background: #ffffffad; font-size: 23px; }
+    .section-title { display: flex; justify-content: space-between; align-items: baseline; margin: 31px 0 15px; }
+    .section-title h2 { margin: 0; font-size: 23px; }
+    .section-title span { color: #667078; font-size: 14px; }
+    .word { display: flex; align-items: center; gap: 12px; min-height: 76px; margin-bottom: 9px; padding: 16px; border-radius: 18px; background: white; }
+    .word-name { font-weight: 700; }
+    .word-meaning { margin-top: 4px; color: #667078; font-size: 14px; }
+    .sound { flex: none; margin-left: auto; width: 42px; height: 42px; border-radius: 50%; color: #14212d; background: #f2f5e8; font-size: 19px; }
+    .study { position: fixed; inset: 0; overflow-y: auto; background: #f5f5f0; z-index: 2; }
+    .study[hidden] { display: none; }
+    .study-inner { display: flex; flex-direction: column; max-width: 620px; min-height: 100%; margin: auto; padding: calc(env(safe-area-inset-top) + 24px) 24px calc(env(safe-area-inset-bottom) + 24px); }
+    .study-top { display: flex; justify-content: space-between; align-items: center; font-size: 14px; font-weight: 700; }
+    .close { padding: 8px 0 8px 16px; background: none; color: #14212d; }
+    .progress { height: 5px; margin: 20px 0 28px; border-radius: 4px; background: #dce0dc; overflow: hidden; }
+    .progress > div { height: 100%; background: #14212d; transition: width .2s; }
+    .card { display: flex; flex-direction: column; flex: 1; min-height: 350px; padding: 26px; border-radius: 28px; background: white; }
+    .eyebrow { color: #667078; font-size: 12px; font-weight: 800; letter-spacing: 2px; }
+    .card-head { display: flex; align-items: center; gap: 8px; margin: 18px 0 24px; }
+    .card-head h2 { flex: 1; min-width: 0; margin: 0; font-size: clamp(31px, 9vw, 40px); overflow-wrap: anywhere; }
+    .card-head .sound { background: #c9ef57; }
+    .hint { color: #667078; }
+    .answer { border-top: 1px solid #e6e9e5; padding-top: 19px; }
+    .answer[hidden] { display: none; }
+    .meaning { margin: 0 0 23px; font-size: 23px; font-weight: 700; }
+    .example { margin: 0 0 10px; line-height: 1.5; }
+    .translation { margin: 0; color: #667078; font-size: 14px; line-height: 1.5; }
+    .actions { display: flex; gap: 12px; margin-top: 18px; }
+    .actions[hidden] { display: none; }
+    .actions button { flex: 1; min-height: 56px; border-radius: 18px; font-weight: 700; }
+    .reveal { color: white; background: #14212d; }
+    .again { background: white; }
+    .remember { background: #c9ef57; }
+    .notice { min-height: 20px; margin: 12px 0 0; color: #a13e2b; font-size: 13px; }
+  </style>
+  <script src="./app.js" defer></script>
+</head>
+<body>
+  <main class="shell">
+    <div class="brand"><span class="mark" aria-hidden="true">✦</span><span>WORDSPRING</span></div>
+    <h1>每天一点，<br>英语更近一点。</h1>
+    <p class="sub">用几分钟，记住今天的词。</p>
+    <div class="stats" aria-label="学习进度">
+      <div class="stat"><strong id="due-count">–</strong><span>待复习</span></div>
+      <div class="stat"><strong id="today-count">–</strong><span>今日已学</span></div>
+      <div class="stat"><strong id="total-count">–</strong><span>累计学习</span></div>
+    </div>
+    <button class="start" id="start" disabled><span><strong id="start-title">正在加载</strong><small id="start-detail">请稍候</small></span><span class="start-arrow" aria-hidden="true">→</span></button>
+    <div class="section-title"><h2>词库</h2><span id="library-count"></span></div>
+    <div id="library"></div>
+  </main>
+
+  <section class="study" id="study" aria-label="单词复习" hidden>
+    <div class="study-inner">
+      <div class="study-top"><span id="position"></span><button class="close" id="close">关闭</button></div>
+      <div class="progress"><div id="progress-bar"></div></div>
+      <div class="card">
+        <span class="eyebrow">今日单词</span>
+        <div class="card-head"><h2 id="english"></h2><button class="sound" id="speak-current" aria-label="朗读单词">♪</button></div>
+        <p class="hint" id="hint">先想一想它的意思，再查看答案。</p>
+        <div class="answer" id="answer" hidden>
+          <p class="meaning" id="chinese"></p>
+          <p class="example" id="example"></p>
+          <p class="translation" id="translation"></p>
+        </div>
+      </div>
+      <div class="actions" id="reveal-actions"><button class="reveal" id="reveal">查看答案</button></div>
+      <div class="actions" id="rate-actions" hidden><button class="again" id="again">↶ 再学一次</button><button class="remember" id="remember">✓ 记住了</button></div>
+      <p class="notice" id="notice" role="status"></p>
+    </div>
+  </section>
+</body>
+</html>

@@ -1,0 +1,122 @@
+[
+  {
+    "english": "achieve",
+    "chinese": "实现；达到",
+    "example": "You can achieve your goal with practice.",
+    "translation": "通过练习，你可以实现目标。"
+  },
+  {
+    "english": "adapt",
+    "chinese": "适应",
+    "example": "It takes time to adapt to a new city.",
+    "translation": "适应一座新城市需要时间。"
+  },
+  {
+    "english": "approach",
+    "chinese": "方法；靠近",
+    "example": "Let's try a different approach.",
+    "translation": "我们试试不同的方法。"
+  },
+  {
+    "english": "benefit",
+    "chinese": "益处；受益",
+    "example": "Reading every day has many benefits.",
+    "translation": "每天阅读有很多益处。"
+  },
+  {
+    "english": "challenge",
+    "chinese": "挑战",
+    "example": "Learning a language is a fun challenge.",
+    "translation": "学习一门语言是一项有趣的挑战。"
+  },
+  {
+    "english": "confident",
+    "chinese": "自信的",
+    "example": "She feels confident speaking English.",
+    "translation": "她说英语时很自信。"
+  },
+  {
+    "english": "discover",
+    "chinese": "发现",
+    "example": "We discover new ideas by asking questions.",
+    "translation": "通过提问，我们发现新想法。"
+  },
+  {
+    "english": "effort",
+    "chinese": "努力",
+    "example": "Your effort will make a difference.",
+    "translation": "你的努力会带来改变。"
+  },
+  {
+    "english": "encourage",
+    "chinese": "鼓励",
+    "example": "My friends encourage me to keep going.",
+    "translation": "朋友们鼓励我继续前进。"
+  },
+  {
+    "english": "essential",
+    "chinese": "必不可少的",
+    "example": "Sleep is essential for good health.",
+    "translation": "睡眠对健康必不可少。"
+  },
+  {
+    "english": "explore",
+    "chinese": "探索",
+    "example": "I want to explore the old town.",
+    "translation": "我想探索这座古城。"
+  },
+  {
+    "english": "focus",
+    "chinese": "专注；重点",
+    "example": "Focus on one task at a time.",
+    "translation": "一次专注于一件事。"
+  },
+  {
+    "english": "improve",
+    "chinese": "提高；改善",
+    "example": "A little practice can improve your pronunciation.",
+    "translation": "一点练习就能改善你的发音。"
+  },
+  {
+    "english": "opportunity",
+    "chinese": "机会",
+    "example": "This is an opportunity to learn something new.",
+    "translation": "这是学习新知识的机会。"
+  },
+  {
+    "english": "patient",
+    "chinese": "有耐心的",
+    "example": "Be patient with yourself as you learn.",
+    "translation": "学习时对自己多一点耐心。"
+  },
+  {
+    "english": "prepare",
+    "chinese": "准备",
+    "example": "I prepare my notes before class.",
+    "translation": "上课前我会准备笔记。"
+  },
+  {
+    "english": "progress",
+    "chinese": "进步；进展",
+    "example": "You are making progress every day.",
+    "translation": "你每天都在进步。"
+  },
+  {
+    "english": "reliable",
+    "chinese": "可靠的",
+    "example": "We need a reliable source of information.",
+    "translation": "我们需要可靠的信息来源。"
+  },
+  {
+    "english": "support",
+    "chinese": "支持；帮助",
+    "example": "Good friends support each other.",
+    "translation": "好朋友会互相支持。"
+  },
+  {
+    "english": "valuable",
+    "chinese": "有价值的",
+    "example": "Your time is valuable.",
+    "translation": "你的时间很宝贵。"
+  }
+]
