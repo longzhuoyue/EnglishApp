@@ -51,7 +51,7 @@ assert.equal(validSpeakingProgress({ cursor: {}, practiced: {}, difficult: { 1: 
 assert.equal(validProgress({ completed: [1], steps: { 1: 5 }, answers: {}, reviews: { "1:0": { intervalDays: 1, nextReview: 1000 } } }), true);
 assert.equal(validProgress({ completed: [1, 1], steps: {}, answers: {}, reviews: {} }), false);
 assert.equal(validProgress({ completed: [], steps: [], answers: {}, reviews: {} }), false);
-for (const file of ["index.html", "app.js", "course.js", "speaking.js", "lessons.json", "speaking.json", "words.json", "manifest.webmanifest", "icon-180.png", "icon-512.png", "sw.js"]) {
+for (const file of ["index.html", "app.js", "course.js", "speaking.js", "ai-chat.js", "lessons.json", "speaking.json", "words.json", "manifest.webmanifest", "icon-180.png", "icon-512.png", "sw.js"]) {
   assert.ok(fs.existsSync(path.join(__dirname, file)), `${file} is missing`);
 }
 console.log("WordSpring web checks passed");

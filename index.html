@@ -75,6 +75,22 @@
     .speaking-card button:disabled { opacity: .6; }
     .speaking-card button + button { margin-top: 9px; background: white; }
     .speaking-card button[hidden], #speaking-again[hidden] { display: none; }
+    .ai-card { margin: 18px 0; padding: 24px; border-radius: 26px; background: #e9efd7; }
+    .ai-card h2 { margin: 0 0 8px; font-size: 24px; }
+    .ai-card p { color: #4c615d; line-height: 1.5; }
+    .ai-card button { width: 100%; min-height: 50px; border-radius: 14px; background: #14212d; color: white; font-weight: 750; }
+    .ai-settings { padding: 16px; margin: 12px 0; border-radius: 16px; background: white; }
+    .ai-settings[hidden] { display: none; }
+    .ai-settings label { display: block; margin: 12px 0; font-weight: 700; }
+    .ai-settings input { display: block; width: 100%; margin-top: 6px; padding: 12px; border: 1px solid #cbd3cc; border-radius: 10px; font: inherit; }
+    .ai-settings button, .ai-tools button { min-height: 44px; padding: 10px 14px; border-radius: 12px; }
+    .ai-history { flex: 1; margin: 12px 0; }
+    .ai-line { margin: 10px 0; padding: 14px; border-radius: 16px; background: white; }
+    .ai-line.user { margin-left: 28px; background: #e9efd7; }
+    .ai-line p { margin: 7px 0; white-space: pre-wrap; line-height: 1.5; }
+    .ai-tools { display: flex; gap: 8px; margin-top: 10px; }
+    .ai-tools button { flex: 1; }
+    .ai-input { width: 100%; min-height: 78px; padding: 12px; border: 1px solid #cbd3cc; border-radius: 12px; font: inherit; resize: vertical; }
     .speaking-scenes { margin: 14px 0; border-radius: 20px; background: white; }
     .speaking-scenes summary { padding: 19px; font-weight: 750; cursor: pointer; }
     .speaking-scenes .day-row small { line-height: 1.4; }
@@ -140,9 +156,10 @@
     .done-mark { display: grid; place-items: center; width: 64px; height: 64px; margin: 12px 0 22px; border-radius: 20px; background: #c9ef57; font-size: 32px; }
     audio { width: 100%; margin-top: 14px; }
   </style>
-  <script src="./app.js?v=6" defer></script>
+  <script src="./app.js?v=7" defer></script>
   <script src="./course.js?v=6" defer></script>
   <script src="./speaking.js?v=6" defer></script>
+  <script src="./ai-chat.js?v=7" defer></script>
 </head>
 <body>
   <main class="shell">
@@ -163,6 +180,12 @@
       <button id="speaking-difficult-start" hidden>先练难句</button>
     </section>
     <details class="speaking-scenes"><summary>选择口语场景</summary><div class="day-list" id="speaking-scenes"></div></details>
+    <section class="ai-card" aria-label="AI 自由对话">
+      <p class="kicker">免费额度 · 需要联网</p>
+      <h2>AI 自由对话</h2>
+      <p>打字或录一句话，和 AI 练日常英语。回复可朗读；语音转文字只识别内容，不评发音。</p>
+      <button id="ai-open">开始自由对话 →</button>
+    </section>
     <div class="course-review" id="course-review" hidden><div><strong id="course-review-count">0 句待复习</strong><span>把学过的表达再说一遍</span></div><button id="course-review-start">开始复习</button></div>
     <details class="course-outline"><summary>查看七天课程</summary><div class="day-list" id="course-days"></div></details>
     <h2 class="small-heading">拓展词库</h2>
@@ -183,6 +206,25 @@
       <div class="lesson-progress" id="speaking-position"></div>
       <div class="lesson-panel" id="speaking-content"></div>
       <div class="lesson-footer"><button class="secondary" id="speaking-again">还不熟</button><button class="primary" id="speaking-next">说出来了 →</button></div>
+    </div>
+  </section>
+
+  <section class="overlay" id="ai-view" aria-label="AI 自由对话" hidden>
+    <div class="overlay-inner">
+      <div class="overlay-top"><strong>AI 自由对话</strong><button id="ai-close">关闭</button></div>
+      <p class="tip">需要联网和 Cloudflare 免费账号。每日免费额度用完后，次日再练；录音会发送到 Cloudflare 识别。</p>
+      <button class="utility-button" id="ai-edit-settings">服务设置</button>
+      <div class="ai-settings" id="ai-settings" hidden>
+        <label>访问口令<input id="ai-passcode" type="password" autocomplete="off"></label>
+        <button class="primary" id="ai-save-settings">保存设置</button>
+      </div>
+      <label for="ai-topic">练习场景</label>
+      <select id="ai-topic" class="write-box" style="min-height:48px;height:48px"><option>日常交流</option><option>点餐</option><option>问路</option><option>自由聊天</option></select>
+      <div class="ai-history" id="ai-history" aria-live="polite"></div>
+      <label for="ai-input">你想说什么？英文或中文都可以</label>
+      <textarea class="ai-input" id="ai-input" maxlength="400" placeholder="例如：Hello! How are you?"></textarea>
+      <div class="ai-tools"><button class="secondary" id="ai-record">● 录音转文字</button><button class="primary" id="ai-send">发送 →</button></div>
+      <p class="tip" id="ai-status" role="status">先设置免费 AI 服务，再开始对话。</p>
     </div>
   </section>
 
