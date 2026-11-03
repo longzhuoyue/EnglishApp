@@ -33,8 +33,9 @@ assert.equal(nextCourseDay(lessons, [1, 2]).id, 3);
 assert.equal(speaking.length, 7);
 for (const [day, scene] of speaking.entries()) {
   assert.equal(scene.id, day + 1);
-  assert.equal(scene.items.length, 8);
+  assert.equal(scene.items.length, 12);
   assert.ok(scene.items.some(item => item.mode === "echo"));
+  assert.ok(scene.items.some(item => item.mode === "recall"));
   assert.ok(scene.items.some(item => item.mode === "reply"));
   for (const item of scene.items) {
     assert.ok(item.en && item.zh);
@@ -44,7 +45,9 @@ for (const [day, scene] of speaking.entries()) {
 assert.equal(speechMatches({ en: "I'm fine, thank you." }, "I am fine thank you"), true);
 assert.equal(speechMatches({ en: "Good morning." }, "good evening"), false);
 assert.equal(validSpeakingProgress({ cursor: { 1: 3 }, practiced: { 1: [0, 1, 2] }, sessions: 0 }), true);
-assert.equal(validSpeakingProgress({ cursor: { 1: 9 }, practiced: {}, sessions: 0 }), false);
+assert.equal(validSpeakingProgress({ cursor: { 1: 9 }, practiced: {}, difficult: { 1: [2, 8] }, sessions: 0 }), true);
+assert.equal(validSpeakingProgress({ cursor: { 1: 13 }, practiced: {}, difficult: {}, sessions: 0 }), false);
+assert.equal(validSpeakingProgress({ cursor: {}, practiced: {}, difficult: { 1: [12] }, sessions: 0 }), false);
 assert.equal(validProgress({ completed: [1], steps: { 1: 5 }, answers: {}, reviews: { "1:0": { intervalDays: 1, nextReview: 1000 } } }), true);
 assert.equal(validProgress({ completed: [1, 1], steps: {}, answers: {}, reviews: {} }), false);
 assert.equal(validProgress({ completed: [], steps: [], answers: {}, reviews: {} }), false);

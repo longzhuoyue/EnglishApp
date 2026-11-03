@@ -73,6 +73,8 @@
     .speaking-card .kicker { color: #c9ef57; }
     .speaking-card button { width: 100%; min-height: 50px; border-radius: 14px; color: #14212d; background: #c9ef57; font-weight: 750; }
     .speaking-card button:disabled { opacity: .6; }
+    .speaking-card button + button { margin-top: 9px; background: white; }
+    .speaking-card button[hidden], #speaking-again[hidden] { display: none; }
     .speaking-scenes { margin: 14px 0; border-radius: 20px; background: white; }
     .speaking-scenes summary { padding: 19px; font-weight: 750; cursor: pointer; }
     .speaking-scenes .day-row small { line-height: 1.4; }
@@ -138,9 +140,9 @@
     .done-mark { display: grid; place-items: center; width: 64px; height: 64px; margin: 12px 0 22px; border-radius: 20px; background: #c9ef57; font-size: 32px; }
     audio { width: 100%; margin-top: 14px; }
   </style>
-  <script src="./app.js?v=5" defer></script>
-  <script src="./course.js?v=5" defer></script>
-  <script src="./speaking.js?v=5" defer></script>
+  <script src="./app.js?v=6" defer></script>
+  <script src="./course.js?v=6" defer></script>
+  <script src="./speaking.js?v=6" defer></script>
 </head>
 <body>
   <main class="shell">
@@ -158,6 +160,7 @@
       <h2>开口说英语</h2>
       <p id="speaking-summary">正在加载练习</p>
       <button id="speaking-start" disabled>开始口语练习 →</button>
+      <button id="speaking-difficult-start" hidden>先练难句</button>
     </section>
     <details class="speaking-scenes"><summary>选择口语场景</summary><div class="day-list" id="speaking-scenes"></div></details>
     <div class="course-review" id="course-review" hidden><div><strong id="course-review-count">0 句待复习</strong><span>把学过的表达再说一遍</span></div><button id="course-review-start">开始复习</button></div>
@@ -179,7 +182,7 @@
       <div class="overlay-top"><strong id="speaking-title"></strong><button id="speaking-close">关闭</button></div>
       <div class="lesson-progress" id="speaking-position"></div>
       <div class="lesson-panel" id="speaking-content"></div>
-      <div class="lesson-footer"><button class="primary" id="speaking-next">我已练过，下一句 →</button></div>
+      <div class="lesson-footer"><button class="secondary" id="speaking-again">还不熟</button><button class="primary" id="speaking-next">说出来了 →</button></div>
     </div>
   </section>
 

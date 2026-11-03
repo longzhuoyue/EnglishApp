@@ -1,5 +1,5 @@
-const CACHE = "wordspring-v5";
-const FILES = ["./", "./?v=5", "./app.js?v=5", "./course.js?v=5", "./speaking.js?v=5", "./lessons.json", "./speaking.json", "./words.json", "./manifest.webmanifest", "./icon-180.png", "./icon-512.png"];
+const CACHE = "wordspring-v6";
+const FILES = ["./", "./?v=6", "./app.js?v=6", "./course.js?v=6", "./speaking.js?v=6", "./lessons.json", "./speaking.json?v=6", "./words.json", "./manifest.webmanifest", "./icon-180.png", "./icon-512.png"];
 
 self.addEventListener("install", event => {
   event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(FILES)).then(() => self.skipWaiting()));
