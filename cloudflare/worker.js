@@ -50,14 +50,26 @@ export async function handleRequest(request, env) {
       const topic = ["日常交流", "点餐", "问路", "自由聊天"].includes(input.topic) ? input.topic : "日常交流";
       const result = await env.AI.run(MODEL, {
         messages: [
-          { role: "system", content: `You are a patient English conversation partner for a Chinese beginner. Topic: ${topic}. Reply in short, natural A1 English (one or two sentences), then add one short Chinese hint. Ask one simple follow-up question. If the learner writes Chinese, show a natural short English expression first. 中文提示必须使用中国大陆简体中文（zh-CN），不要使用繁体字。例如写“我想点一杯咖啡。你今天怎么样？”，不要写“我想點一杯咖啡。你今天怎麼樣？” Never claim to grade pronunciation or to have heard audio.` },
+          { role: "system", content: `You are a patient English conversation partner for a Chinese beginner. Topic: ${topic}. Reply in exactly two lines. Line 1: one or two short, natural A1 English sentences, including one simple follow-up question. Line 2: one short Simplified Chinese hint, beginning with “中文提示：”. The English line must come first even when the learner writes Chinese or earlier assistant messages are in Chinese. If the learner writes Chinese, first show a natural English expression. Never claim to grade pronunciation or to have heard audio.` },
           ...input.messages
         ],
         max_tokens: 180,
         temperature: 0.5
       });
-      const answer = typeof result.response === "string" ? result.response.trim() : "";
-      return answer ? reply({ answer: answer.slice(0, 1200) }) : reply({ error: "AI 暂时没有返回内容，请重试。" }, 502);
+      let answer = typeof result.response === "string" ? result.response.trim() : "";
+      const englishFirst = value => /^[^\n\u3400-\u9fff]*[A-Za-z]{2,}[^\n\u3400-\u9fff]*(?:\n|$)/.test(value);
+      if (answer && !englishFirst(answer)) {
+        const corrected = await env.AI.run(MODEL, {
+          messages: [
+            { role: "system", content: "Rewrite the given reply for a beginner learning English. First line: simple conversational English with one short follow-up question. Second line: one brief Simplified Chinese hint starting with 中文提示：. Never put Chinese before the English line." },
+            { role: "user", content: answer.slice(0, 1200) }
+          ],
+          max_tokens: 180,
+          temperature: 0.3
+        });
+        answer = typeof corrected.response === "string" ? corrected.response.trim() : "";
+      }
+      return englishFirst(answer) ? reply({ answer: simplify(answer).slice(0, 1200) }) : reply({ error: "AI 没有返回英文，请再试一次。" }, 502);
     }
     if (path === "/transcribe") {
       if (!/^audio\/(mp4|mpeg|wav|webm|x-m4a)(?:;|$)/i.test(request.headers.get("content-type") || "")) return reply({ error: "录音格式不支持。" }, 415);
