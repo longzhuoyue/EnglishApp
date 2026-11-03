@@ -1,6 +1,10 @@
+import * as OpenCC from "opencc-js/core";
+import * as Locale from "opencc-js/preset";
+
 const SITE = "https://longzhuoyue.github.io";
 const MODEL = "@cf/meta/llama-3.1-8b-instruct-fp8-fast";
 const SPEECH_MODEL = "@cf/openai/whisper";
+const simplify = OpenCC.ConverterFactory(Locale.from.tw, Locale.to.cn);
 
 function reply(data, status = 200, origin = SITE) {
   return new Response(JSON.stringify(data), {
@@ -61,7 +65,7 @@ export async function handleRequest(request, env) {
       const audio = await request.arrayBuffer();
       if (!audio.byteLength || audio.byteLength > 2_000_000) return reply({ error: "录音太大或为空。" }, 413);
       const result = await env.AI.run(SPEECH_MODEL, { audio: [...new Uint8Array(audio)] });
-      const transcript = typeof result.text === "string" ? result.text.trim() : "";
+      const transcript = typeof result.text === "string" ? simplify(result.text.trim()) : "";
       return transcript ? reply({ transcript: transcript.slice(0, 400) }) : reply({ error: "没有听清，请再说一遍。" }, 422);
     }
     return reply({ error: "功能不存在。" }, 404);
