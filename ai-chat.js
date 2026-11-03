@@ -8,6 +8,8 @@ function startAiChat() {
   let stream = null;
   let timer = null;
   let busy = false;
+  let mode = "chat";
+  let translatedDirection = "zh-en";
 
   try { settings = { ...settings, ...JSON.parse(localStorage.getItem(STORAGE) || "{}") }; } catch { /* Settings can be entered again. */ }
 
@@ -65,11 +67,25 @@ function startAiChat() {
     } finally { clearTimeout(timeout); }
   }
 
-  $("ai-open").onclick = () => {
+  function open(modeName) {
+    mode = modeName;
+    const translating = mode === "translate";
     $("ai-view").hidden = false;
+    $("ai-view").setAttribute("aria-label", translating ? "中英翻译" : "AI 自由对话");
+    $("ai-title").textContent = translating ? "中英翻译" : "AI 自由对话";
+    $("ai-topic-section").hidden = translating;
+    $("translation-controls").hidden = !translating;
+    $("ai-history").hidden = translating;
+    $("translation-result").hidden = true;
+    $("ai-input-label").textContent = translating ? "输入要翻译的话" : "你想说什么？英文或中文都可以";
+    $("ai-input").placeholder = translating && $("translate-direction").value === "en-zh" ? "例如：Where is the station?" : translating ? "例如：我想点一杯咖啡。" : "例如：Hello! How are you?";
+    $("ai-send").textContent = translating ? "翻译 →" : "发送 →";
+    $("ai-status").textContent = settings.passcode ? (translating ? "选择方向，输入或录音后点击翻译。" : "可以继续对话。") : "先设置免费 AI 服务。";
     document.body.style.overflow = "hidden";
     showSettings();
-  };
+  }
+  $("ai-open").onclick = () => open("chat");
+  $("translate-open").onclick = () => open("translate");
   $("ai-close").onclick = () => {
     stopRecording();
     if ("speechSynthesis" in window) speechSynthesis.cancel();
@@ -83,7 +99,19 @@ function startAiChat() {
     settings = { passcode };
     try { localStorage.setItem(STORAGE, JSON.stringify(settings)); } catch { return status("设置无法保存，请检查 Safari 网站数据设置。"); }
     $("ai-settings").hidden = true;
-    status("设置已保存，可以开始对话。");
+    status(mode === "translate" ? "设置已保存，可以开始翻译。" : "设置已保存，可以开始对话。");
+  };
+  $("translate-direction").onchange = () => {
+    $("translation-result").hidden = true;
+    $("ai-input").placeholder = $("translate-direction").value === "en-zh" ? "例如：Where is the station?" : "例如：我想点一杯咖啡。";
+  };
+  $("translation-play").onclick = () => {
+    if (!("speechSynthesis" in window)) return status("这台设备暂时无法朗读。");
+    speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance($("translation-text").textContent);
+    utterance.lang = translatedDirection === "zh-en" ? "en-US" : "zh-CN";
+    utterance.rate = 0.82;
+    speechSynthesis.speak(utterance);
   };
   $("ai-send").onclick = async () => {
     const text = $("ai-input").value.trim();
@@ -92,16 +120,27 @@ function startAiChat() {
     if (!settings.passcode) { showSettings(); return status("请先填写访问口令。"); }
     if (text.length > 400) return status("每次最多输入 400 个字。");
     busy = true;
+    const translating = mode === "translate";
     $("ai-send").disabled = true;
-    status("对话伙伴正在回复……");
+    status(translating ? "正在翻译……" : "对话伙伴正在回复……");
     try {
-      const next = [...messages, { role: "user", content: text }].slice(-9);
-      const result = await request("/chat", JSON.stringify({ topic: $("ai-topic").value, messages: next }), "application/json");
-      addLine("user", text);
-      addLine("assistant", result.answer);
-      messages = [...next, { role: "assistant", content: result.answer.slice(0, 400) }].slice(-8);
+      if (translating) {
+        $("translation-result").hidden = true;
+        const direction = $("translate-direction").value;
+        const result = await request("/translate", JSON.stringify({ direction, text }), "application/json");
+        if (mode !== "translate" || $("ai-view").hidden || $("translate-direction").value !== direction) return;
+        $("translation-text").textContent = result.translation;
+        $("translation-result").hidden = false;
+        translatedDirection = direction;
+      } else {
+        const next = [...messages, { role: "user", content: text }].slice(-9);
+        const result = await request("/chat", JSON.stringify({ topic: $("ai-topic").value, messages: next }), "application/json");
+        addLine("user", text);
+        addLine("assistant", result.answer);
+        messages = [...next, { role: "assistant", content: result.answer.slice(0, 400) }].slice(-8);
+      }
       $("ai-input").value = "";
-      status("可以继续说一句，或点击朗读听回复。");
+      status(translating ? "翻译完成，可以朗读译文。" : "可以继续说一句，或点击朗读听回复。");
     } catch (error) { status(error.name === "AbortError" ? "等待超时，请再试一次。" : error.message || "网络暂时不可用。"); }
     finally { busy = false; $("ai-send").disabled = false; }
   };
@@ -136,7 +175,7 @@ function startAiChat() {
       };
       active.start();
       $("ai-record").textContent = "■ 停止录音";
-      status("请说一句英文，最多录 20 秒。");
+      status(mode === "translate" ? "请说要翻译的话，最多录 20 秒。" : "请说一句英文，最多录 20 秒。");
       timer = setTimeout(() => { if (active.state === "recording") active.stop(); }, 20000);
     } catch { stopRecording(); status("录音未启动，请检查麦克风权限。"); }
   };

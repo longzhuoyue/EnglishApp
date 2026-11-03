@@ -34,6 +34,17 @@ assert.equal((await recovered.json()).answer.startsWith("Hello!"), true);
 assert.equal(attempts, 2);
 const chineseOnly = { ...env, AI: { async run() { return { response: "你好！你喜欢吃什么？" }; } } };
 assert.equal((await handleRequest(post("/chat", JSON.stringify({ messages: [{ role: "user", content: "hello" }] })), chineseOnly)).status, 502);
+const translations = [];
+const translateEnv = { ...env, AI: { async run(model, input) {
+  translations.push({ model, input });
+  return { response: translations.length === 1 ? "I'd like a coffee, please." : "我想點一杯咖啡。" };
+} } };
+const toEnglish = await handleRequest(post("/translate", JSON.stringify({ direction: "zh-en", text: "我想点一杯咖啡。" })), translateEnv);
+assert.equal((await toEnglish.json()).translation, "I'd like a coffee, please.");
+const toChinese = await handleRequest(post("/translate", JSON.stringify({ direction: "en-zh", text: "I want a coffee." })), translateEnv);
+assert.equal((await toChinese.json()).translation, "我想点一杯咖啡。");
+assert.equal(translations[0].input.messages.at(-1).content, "我想点一杯咖啡。");
+assert.equal((await handleRequest(post("/translate", JSON.stringify({ direction: "other", text: "hello" })), env)).status, 400);
 const speech = await handleRequest(post("/transcribe", new Uint8Array([1, 2, 3]), "audio/mp4"), env);
 assert.equal((await speech.json()).transcript, "我想点一杯咖啡。你今天怎么样？学习英语很有趣。");
 assert.equal(calls[1].input.audio.length, 3);

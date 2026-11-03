@@ -156,10 +156,10 @@
     .done-mark { display: grid; place-items: center; width: 64px; height: 64px; margin: 12px 0 22px; border-radius: 20px; background: #c9ef57; font-size: 32px; }
     audio { width: 100%; margin-top: 14px; }
   </style>
-  <script src="./app.js?v=8" defer></script>
+  <script src="./app.js?v=9" defer></script>
   <script src="./course.js?v=6" defer></script>
   <script src="./speaking.js?v=6" defer></script>
-  <script src="./ai-chat.js?v=8" defer></script>
+  <script src="./ai-chat.js?v=9" defer></script>
 </head>
 <body>
   <main class="shell">
@@ -186,6 +186,12 @@
       <p>打字或录一句话，和 AI 练日常英语。回复可朗读；语音转文字只识别内容，不评发音。</p>
       <button id="ai-open">开始自由对话 →</button>
     </section>
+    <section class="ai-card" aria-label="中英翻译">
+      <p class="kicker">免费额度 · 需要联网</p>
+      <h2>中英翻译</h2>
+      <p>输入或录一句话，选择中译英或英译中，只返回译文，不继续对话。</p>
+      <button id="translate-open">开始翻译 →</button>
+    </section>
     <div class="course-review" id="course-review" hidden><div><strong id="course-review-count">0 句待复习</strong><span>把学过的表达再说一遍</span></div><button id="course-review-start">开始复习</button></div>
     <details class="course-outline"><summary>查看七天课程</summary><div class="day-list" id="course-days"></div></details>
     <h2 class="small-heading">拓展词库</h2>
@@ -211,17 +217,20 @@
 
   <section class="overlay" id="ai-view" aria-label="AI 自由对话" hidden>
     <div class="overlay-inner">
-      <div class="overlay-top"><strong>AI 自由对话</strong><button id="ai-close">关闭</button></div>
+      <div class="overlay-top"><strong id="ai-title">AI 自由对话</strong><button id="ai-close">关闭</button></div>
       <p class="tip">需要联网和 Cloudflare 免费账号。每日免费额度用完后，次日再练；录音会发送到 Cloudflare 识别。</p>
       <button class="utility-button" id="ai-edit-settings">服务设置</button>
       <div class="ai-settings" id="ai-settings" hidden>
         <label>访问口令<input id="ai-passcode" type="password" autocomplete="off"></label>
         <button class="primary" id="ai-save-settings">保存设置</button>
       </div>
-      <label for="ai-topic">练习场景</label>
-      <select id="ai-topic" class="write-box" style="min-height:48px;height:48px"><option>日常交流</option><option>点餐</option><option>问路</option><option>自由聊天</option></select>
+      <div id="ai-topic-section"><label for="ai-topic">练习场景</label>
+      <select id="ai-topic" class="write-box" style="min-height:48px;height:48px"><option>日常交流</option><option>点餐</option><option>问路</option><option>自由聊天</option></select></div>
+      <div id="translation-controls" hidden><label for="translate-direction">翻译方向</label>
+      <select id="translate-direction" class="write-box" style="min-height:48px;height:48px"><option value="zh-en">中文 → 英文</option><option value="en-zh">英文 → 中文</option></select></div>
       <div class="ai-history" id="ai-history" aria-live="polite"></div>
-      <label for="ai-input">你想说什么？英文或中文都可以</label>
+      <div class="ai-line" id="translation-result" hidden><strong>译文</strong><p id="translation-text"></p><button class="utility-button" id="translation-play">♪ 朗读译文</button></div>
+      <label for="ai-input" id="ai-input-label">你想说什么？英文或中文都可以</label>
       <textarea class="ai-input" id="ai-input" maxlength="400" placeholder="例如：Hello! How are you?"></textarea>
       <div class="ai-tools"><button class="secondary" id="ai-record">● 录音转文字</button><button class="primary" id="ai-send">发送 →</button></div>
       <p class="tip" id="ai-status" role="status">先设置免费 AI 服务，再开始对话。</p>
