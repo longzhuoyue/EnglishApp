@@ -37,14 +37,23 @@ assert.equal((await handleRequest(post("/chat", JSON.stringify({ messages: [{ ro
 const translations = [];
 const translateEnv = { ...env, AI: { async run(model, input) {
   translations.push({ model, input });
-  return { response: translations.length === 1 ? "I'd like a coffee, please." : "我想點一杯咖啡。" };
+  return { translated_text: translations.length === 1 ? "I'd like a coffee, please." : "我想點一杯咖啡。" };
 } } };
 const toEnglish = await handleRequest(post("/translate", JSON.stringify({ direction: "zh-en", text: "我想点一杯咖啡。" })), translateEnv);
 assert.equal((await toEnglish.json()).translation, "I'd like a coffee, please.");
 const toChinese = await handleRequest(post("/translate", JSON.stringify({ direction: "en-zh", text: "I want a coffee." })), translateEnv);
 assert.equal((await toChinese.json()).translation, "我想点一杯咖啡。");
-assert.equal(translations[0].input.messages.at(-1).content, "我想点一杯咖啡。");
+assert.equal(translations[0].model, "@cf/meta/m2m100-1.2b");
+assert.deepEqual(translations[0].input, { text: "我想点一杯咖啡。", source_lang: "zh", target_lang: "en" });
+assert.deepEqual(translations[1].input, { text: "I want a coffee.", source_lang: "en", target_lang: "zh" });
 assert.equal((await handleRequest(post("/translate", JSON.stringify({ direction: "other", text: "hello" })), env)).status, 400);
+const weatherEnv = { ...env, AI: { async run(model, input) {
+  return model === "@cf/meta/m2m100-1.2b"
+    ? { translated_text: input.text === "今天天气怎么样" ? "What's the weather like today?" : "" }
+    : { response: "The weather today is nice." };
+} } };
+const weather = await handleRequest(post("/translate", JSON.stringify({ direction: "zh-en", text: "今天天气怎么样" })), weatherEnv);
+assert.deepEqual(await weather.json(), { source: "今天天气怎么样", translation: "What's the weather like today?" });
 const speech = await handleRequest(post("/transcribe", new Uint8Array([1, 2, 3]), "audio/mp4"), env);
 assert.equal((await speech.json()).transcript, "我想点一杯咖啡。你今天怎么样？学习英语很有趣。");
 assert.equal(calls[1].input.audio.length, 3);

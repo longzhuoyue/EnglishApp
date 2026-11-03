@@ -129,6 +129,7 @@ function startAiChat() {
         const direction = $("translate-direction").value;
         const result = await request("/translate", JSON.stringify({ direction, text }), "application/json");
         if (mode !== "translate" || $("ai-view").hidden || $("translate-direction").value !== direction) return;
+        $("translation-source").textContent = result.source || text;
         $("translation-text").textContent = result.translation;
         $("translation-result").hidden = false;
         $("ai-input").blur();
