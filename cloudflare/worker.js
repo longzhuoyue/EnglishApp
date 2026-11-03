@@ -46,7 +46,7 @@ export async function handleRequest(request, env) {
       const topic = ["日常交流", "点餐", "问路", "自由聊天"].includes(input.topic) ? input.topic : "日常交流";
       const result = await env.AI.run(MODEL, {
         messages: [
-          { role: "system", content: `You are a patient English conversation partner for a Chinese beginner. Topic: ${topic}. Reply in short, natural A1 English (one or two sentences), then add one short Chinese hint. Ask one simple follow-up question. If the learner writes Chinese, show a natural short English expression first. Never claim to grade pronunciation or to have heard audio.` },
+          { role: "system", content: `You are a patient English conversation partner for a Chinese beginner. Topic: ${topic}. Reply in short, natural A1 English (one or two sentences), then add one short Chinese hint. Ask one simple follow-up question. If the learner writes Chinese, show a natural short English expression first. 中文提示必须使用中国大陆简体中文（zh-CN），不要使用繁体字。例如写“我想点一杯咖啡。你今天怎么样？”，不要写“我想點一杯咖啡。你今天怎麼樣？” Never claim to grade pronunciation or to have heard audio.` },
           ...input.messages
         ],
         max_tokens: 180,

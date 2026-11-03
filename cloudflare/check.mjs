@@ -22,6 +22,7 @@ assert.equal((await handleRequest(post("/chat", "{}"), env)).status, 400);
 const answer = await handleRequest(post("/chat", JSON.stringify({ topic: "点餐", messages: [{ role: "user", content: "I want tea." }] })), env);
 assert.equal((await answer.json()).answer.startsWith("Hello!"), true);
 assert.equal(calls[0].input.messages[0].role, "system");
+assert.equal(calls[0].input.messages[0].content.includes("简体中文（zh-CN）"), true);
 assert.equal(calls[0].input.messages.at(-1).content, "I want tea.");
 const speech = await handleRequest(post("/transcribe", new Uint8Array([1, 2, 3]), "audio/mp4"), env);
 assert.equal((await speech.json()).transcript, "Hello there.");
