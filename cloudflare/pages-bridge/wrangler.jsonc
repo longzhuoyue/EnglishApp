@@ -1,0 +1,6 @@
+{
+  "name": "wordspring-ai-pages",
+  "pages_build_output_dir": "./site",
+  "compatibility_date": "2026-11-03",
+  "services": [{ "binding": "AI_WORKER", "service": "wordspring-ai" }]
+}

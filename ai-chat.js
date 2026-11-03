@@ -1,7 +1,7 @@
 function startAiChat() {
   const $ = id => document.getElementById(id);
   const STORAGE = "wordspring-ai-settings-v1";
-  const ENDPOINT = "https://wordspring-ai.longzhuoyue-wordspring.workers.dev";
+  const ENDPOINT = "https://wordspring-ai-pages.pages.dev";
   let settings = { passcode: "" };
   let messages = [];
   let recorder = null;
