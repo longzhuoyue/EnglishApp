@@ -131,6 +131,8 @@ function startAiChat() {
         if (mode !== "translate" || $("ai-view").hidden || $("translate-direction").value !== direction) return;
         $("translation-text").textContent = result.translation;
         $("translation-result").hidden = false;
+        $("ai-input").blur();
+        $("translation-result").scrollIntoView({ block: "nearest" });
         translatedDirection = direction;
       } else {
         const next = [...messages, { role: "user", content: text }].slice(-9);
