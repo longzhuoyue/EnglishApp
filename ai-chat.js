@@ -4,6 +4,7 @@ function startAiChat() {
   const ENDPOINT = "https://wordspring-ai-pages.pages.dev";
   let settings = { passcode: "" };
   let messages = [];
+  const teacherMessages = { ask: [], correct: [] };
   let recorder = null;
   let stream = null;
   let timer = null;
@@ -51,9 +52,60 @@ function startAiChat() {
     $("ai-history").append(line);
     line.scrollIntoView({ block: "nearest" });
   }
+  function addTeacherTurn(kind, source, result) {
+    const history = $(`teacher-${kind}-history`);
+    const user = document.createElement("div");
+    user.className = "ai-line user";
+    const userLabel = document.createElement("strong");
+    userLabel.textContent = "我";
+    const original = document.createElement("p");
+    original.textContent = source;
+    user.append(userLabel, original);
+
+    const teacher = document.createElement("div");
+    teacher.className = "ai-line";
+    const title = document.createElement("strong");
+    title.textContent = "英语老师 · AI 建议";
+    teacher.append(title);
+    const fields = kind === "ask"
+      ? [["解答", result.answer], ["英文例句", result.example], ["中文意思", result.meaning]]
+      : [["建议表达", result.corrected], ["原因", result.reason], ["英文回应", result.reply], ["中文提示", result.hint]];
+    fields.forEach(([label, value]) => {
+      const heading = document.createElement("strong");
+      heading.textContent = label;
+      const content = document.createElement("p");
+      content.textContent = value;
+      teacher.append(heading, content);
+    });
+    const play = document.createElement("button");
+    play.className = "utility-button";
+    play.textContent = "♪ 朗读英文";
+    play.onclick = () => {
+      if (!("speechSynthesis" in window)) return status("这台设备暂时无法朗读。");
+      speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(kind === "ask" ? result.example : `${result.corrected} ${result.reply}`);
+      utterance.lang = "en-US";
+      utterance.rate = 0.82;
+      speechSynthesis.speak(utterance);
+    };
+    teacher.append(play);
+    history.append(user, teacher);
+    teacher.scrollIntoView({ block: "nearest" });
+  }
+  function showTeacherMode() {
+    const correcting = $("teacher-mode").value === "correct";
+    $("teacher-ask-history").hidden = mode !== "teach" || correcting;
+    $("teacher-correct-history").hidden = mode !== "teach" || !correcting;
+    $("teacher-help").textContent = correcting
+      ? "说一句英文，查看建议改法并继续对话。录音只转文字，不评发音。"
+      : "可以用中文或英文提问，继续追问也可以。";
+    $("ai-input-label").textContent = correcting ? "用英语说一句，也可以先用中文" : "你想问老师什么？";
+    $("ai-input").placeholder = correcting ? "例如：I goed to the store yesterday." : "例如：为什么 go 变成 went？";
+    $("ai-send").textContent = correcting ? "发送并纠错 →" : "提问 →";
+  }
   async function request(path, body, contentType) {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 30000);
+    const timeout = setTimeout(() => controller.abort(), path === "/teach" ? 45000 : 30000);
     try {
       const response = await fetch(`${ENDPOINT}${path}`, {
         method: "POST",
@@ -68,23 +120,30 @@ function startAiChat() {
   }
 
   function open(modeName) {
+    if (mode !== modeName) $("ai-input").value = "";
     mode = modeName;
     const translating = mode === "translate";
+    const teaching = mode === "teach";
     $("ai-view").hidden = false;
-    $("ai-view").setAttribute("aria-label", translating ? "中英翻译" : "AI 自由对话");
-    $("ai-title").textContent = translating ? "中英翻译" : "AI 自由对话";
-    $("ai-topic-section").hidden = translating;
+    $("ai-view").setAttribute("aria-label", teaching ? "AI 英语老师" : translating ? "中英翻译" : "AI 自由对话");
+    $("ai-title").textContent = teaching ? "AI 英语老师" : translating ? "中英翻译" : "AI 自由对话";
+    $("ai-topic-section").hidden = translating || teaching;
     $("translation-controls").hidden = !translating;
-    $("ai-history").hidden = translating;
+    $("teacher-controls").hidden = !teaching;
+    $("ai-history").hidden = translating || teaching;
+    $("teacher-ask-history").hidden = true;
+    $("teacher-correct-history").hidden = true;
     $("translation-result").hidden = true;
     $("ai-input-label").textContent = translating ? "输入要翻译的话" : "你想说什么？英文或中文都可以";
     $("ai-input").placeholder = translating && $("translate-direction").value === "en-zh" ? "例如：Where is the station?" : translating ? "例如：我想点一杯咖啡。" : "例如：Hello! How are you?";
     $("ai-send").textContent = translating ? "翻译 →" : "发送 →";
-    $("ai-status").textContent = settings.passcode ? (translating ? "选择方向，输入或录音后点击翻译。" : "可以继续对话。") : "先设置免费 AI 服务。";
+    if (teaching) showTeacherMode();
+    $("ai-status").textContent = settings.passcode ? (teaching ? "选好学习方式，就可以开始。" : translating ? "选择方向，输入或录音后点击翻译。" : "可以继续对话。") : "先设置免费 AI 服务。";
     document.body.style.overflow = "hidden";
     showSettings();
   }
   $("ai-open").onclick = () => open("chat");
+  $("teacher-open").onclick = () => open("teach");
   $("translate-open").onclick = () => open("translate");
   $("ai-close").onclick = () => {
     stopRecording();
@@ -99,7 +158,12 @@ function startAiChat() {
     settings = { passcode };
     try { localStorage.setItem(STORAGE, JSON.stringify(settings)); } catch { return status("设置无法保存，请检查 Safari 网站数据设置。"); }
     $("ai-settings").hidden = true;
-    status(mode === "translate" ? "设置已保存，可以开始翻译。" : "设置已保存，可以开始对话。");
+    status(mode === "teach" ? "设置已保存，可以开始学习。" : mode === "translate" ? "设置已保存，可以开始翻译。" : "设置已保存，可以开始对话。");
+  };
+  $("teacher-mode").onchange = () => {
+    showTeacherMode();
+    $("ai-input").value = "";
+    status("已切换学习方式，可以继续。");
   };
   $("translate-direction").onchange = () => {
     $("translation-result").hidden = true;
@@ -121,10 +185,21 @@ function startAiChat() {
     if (text.length > 400) return status("每次最多输入 400 个字。");
     busy = true;
     const translating = mode === "translate";
+    const teaching = mode === "teach";
     $("ai-send").disabled = true;
-    status(translating ? "正在翻译……" : "对话伙伴正在回复……");
+    status(teaching ? "英语老师正在回答……" : translating ? "正在翻译……" : "对话伙伴正在回复……");
     try {
-      if (translating) {
+      if (teaching) {
+        const lessonMode = $("teacher-mode").value;
+        const next = [...teacherMessages[lessonMode], { role: "user", content: text }].slice(-7);
+        const result = await request("/teach", JSON.stringify({ mode: lessonMode, messages: next }), "application/json");
+        if (mode !== "teach" || $("ai-view").hidden || $("teacher-mode").value !== lessonMode) return;
+        addTeacherTurn(lessonMode, result.source || text, result);
+        const summary = lessonMode === "ask"
+          ? `${result.answer} 例句：${result.example} ${result.meaning}`
+          : `${result.corrected} ${result.reason} ${result.reply} ${result.hint}`;
+        teacherMessages[lessonMode] = [...next, { role: "assistant", content: summary.slice(0, 400) }].slice(-6);
+      } else if (translating) {
         $("translation-result").hidden = true;
         const direction = $("translate-direction").value;
         const result = await request("/translate", JSON.stringify({ direction, text }), "application/json");
@@ -143,7 +218,7 @@ function startAiChat() {
         messages = [...next, { role: "assistant", content: result.answer.slice(0, 400) }].slice(-8);
       }
       $("ai-input").value = "";
-      status(translating ? "翻译完成，可以朗读译文。" : "可以继续说一句，或点击朗读听回复。");
+      status(teaching ? "可以继续提问或对话，也可以朗读英文。" : translating ? "翻译完成，可以朗读译文。" : "可以继续说一句，或点击朗读听回复。");
     } catch (error) { status(error.name === "AbortError" ? "等待超时，请再试一次。" : error.message || "网络暂时不可用。"); }
     finally { busy = false; $("ai-send").disabled = false; }
   };
@@ -172,13 +247,13 @@ function startAiChat() {
           const audio = new Blob(chunks, { type: active.mimeType || "audio/mp4" });
           const result = await request("/transcribe", audio, audio.type);
           $("ai-input").value = result.transcript;
-          status("识别结果可以修改；确认后点击发送。这不是发音评分。");
+          status("识别结果可以修改；确认后点击下方按钮。录音只转文字，不评发音。");
         } catch (error) { status(error.name === "AbortError" ? "识别超时，请再试一次。" : error.message || "语音识别暂时不可用。"); }
         finally { busy = false; }
       };
       active.start();
       $("ai-record").textContent = "■ 停止录音";
-      status(mode === "translate" ? "请说要翻译的话，最多录 20 秒。" : "请说一句英文，最多录 20 秒。");
+      status(mode === "teach" ? "请说出问题或练习句子，最多录 20 秒。" : mode === "translate" ? "请说要翻译的话，最多录 20 秒。" : "请说一句英文，最多录 20 秒。");
       timer = setTimeout(() => { if (active.state === "recording") active.stop(); }, 20000);
     } catch { stopRecording(); status("录音未启动，请检查麦克风权限。"); }
   };

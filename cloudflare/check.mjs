@@ -54,6 +54,21 @@ const weatherEnv = { ...env, AI: { async run(model, input) {
 } } };
 const weather = await handleRequest(post("/translate", JSON.stringify({ direction: "zh-en", text: "今天天气怎么样" })), weatherEnv);
 assert.deepEqual(await weather.json(), { source: "今天天气怎么样", translation: "What's the weather like today?" });
+const teachCalls = [];
+const teachEnv = { ...env, AI: { async run(model, input) {
+  teachCalls.push({ model, input });
+  return { response: teachCalls.length === 1
+    ? { answer: "go 的过去式是 went。", example: "I went to the store yesterday.", meaning: "我昨天去了商店。" }
+    : { corrected: "I went to the store yesterday.", reason: "go 的过去式是 went。", reply: "What did you buy?", hint: "你买了什么？" } };
+} } };
+const ask = await handleRequest(post("/teach", JSON.stringify({ mode: "ask", messages: [{ role: "user", content: "为什么 go 变成 went？" }] })), teachEnv);
+assert.deepEqual(await ask.json(), { mode: "ask", source: "为什么 go 变成 went？", answer: "go 的过去式是 went。", example: "I went to the store yesterday.", meaning: "我昨天去了商店。" });
+const correction = await handleRequest(post("/teach", JSON.stringify({ mode: "correct", messages: [{ role: "user", content: "I goed to the store yesterday." }] })), teachEnv);
+assert.deepEqual(await correction.json(), { mode: "correct", source: "I goed to the store yesterday.", corrected: "I went to the store yesterday.", reason: "go 的过去式是 went。", reply: "What did you buy?", hint: "你买了什么？" });
+assert.equal(teachCalls[0].model, "@cf/meta/llama-3.3-70b-instruct-fp8-fast");
+assert.equal(teachCalls[0].input.response_format.type, "json_schema");
+assert.equal(teachCalls[1].input.messages.at(-1).content, "I goed to the store yesterday.");
+assert.equal((await handleRequest(post("/teach", JSON.stringify({ mode: "other", messages: [{ role: "user", content: "hello" }] })), env)).status, 400);
 const speech = await handleRequest(post("/transcribe", new Uint8Array([1, 2, 3]), "audio/mp4"), env);
 assert.equal((await speech.json()).transcript, "我想点一杯咖啡。你今天怎么样？学习英语很有趣。");
 assert.equal(calls[1].input.audio.length, 3);

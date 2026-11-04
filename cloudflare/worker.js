@@ -3,6 +3,7 @@ import * as Locale from "opencc-js/preset";
 
 const SITE = "https://longzhuoyue.github.io";
 const MODEL = "@cf/meta/llama-3.1-8b-instruct-fp8-fast";
+const TEACH_MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast";
 const TRANSLATION_MODEL = "@cf/meta/m2m100-1.2b";
 const SPEECH_MODEL = "@cf/openai/whisper";
 const simplify = OpenCC.ConverterFactory(Locale.from.tw, Locale.to.cn);
@@ -92,6 +93,48 @@ export async function handleRequest(request, env) {
       return (toEnglish ? /[A-Za-z]/.test(translation) : /[\u3400-\u9fff]/.test(translation))
         ? reply({ source, translation: translation.slice(0, 1600) })
         : reply({ error: "AI 没有返回译文，请再试一次。" }, 502);
+    }
+    if (path === "/teach") {
+      if (Number(request.headers.get("content-length")) > 5000) return reply({ error: "内容太长。" }, 413);
+      const body = await request.text();
+      if (body.length > 5000) return reply({ error: "内容太长。" }, 413);
+      let input;
+      try { input = JSON.parse(body); } catch { return reply({ error: "教学内容无效。" }, 400); }
+      if (!input || !["ask", "correct"].includes(input.mode) || !Array.isArray(input.messages) ||
+          input.messages.length < 1 || input.messages.length > 7 ||
+          input.messages.some(item => !item || !["user", "assistant"].includes(item.role) || typeof item.content !== "string" || !item.content.trim() || item.content.length > 400) ||
+          input.messages.at(-1).role !== "user") {
+        return reply({ error: "教学内容无效。" }, 400);
+      }
+      const asking = input.mode === "ask";
+      const fields = asking ? ["answer", "example", "meaning"] : ["corrected", "reason", "reply", "hint"];
+      const prompt = asking
+        ? "You are a patient English teacher for a Chinese absolute beginner. Put only the direct explanation in answer, using one or two short Simplified Chinese sentences. Put exactly one simple A1 English sentence in example and its Simplified Chinese translation in meaning. Do not repeat the example or translation inside answer. Use previous turns only to understand follow-up questions. Do not pretend to assess pronunciation. No field may be empty. Return only the requested JSON fields."
+        : "You are a patient English conversation tutor for a Chinese absolute beginner. For the learner's latest message, correct at most one important English error. The corrected field must contain a complete English sentence. The reason field must ALWAYS contain one short Simplified Chinese sentence explaining the change. If the English is natural, copy it exactly into corrected and write '这句话自然，无需修改。' in reason; do not force punctuation or style changes. If the learner wrote Chinese, put a natural simple English equivalent in corrected and write '这是对应的英文表达。' in reason. Then continue with one short A1 English sentence or question in reply. The hint field must ALWAYS contain a short Simplified Chinese translation of reply. No field may be empty. Judge the text only; never claim to assess pronunciation. Return only the requested JSON fields.";
+      const result = await env.AI.run(TEACH_MODEL, {
+        messages: [{ role: "system", content: prompt }, ...input.messages],
+        response_format: {
+          type: "json_schema",
+          json_schema: {
+            type: "object",
+            properties: Object.fromEntries(fields.map(field => [field, { type: "string", minLength: 1 }])),
+            required: fields,
+            additionalProperties: false
+          }
+        },
+        max_tokens: 320,
+        temperature: 0.2
+      });
+      let output = result.response;
+      if (typeof output === "string") {
+        try { output = JSON.parse(output); } catch { output = null; }
+      }
+      if (!output || fields.some(field => typeof output[field] !== "string" || !output[field].trim()) ||
+          !(asking ? /[A-Za-z]/.test(output.example) : /[A-Za-z]/.test(output.corrected) && /[A-Za-z]/.test(output.reply))) {
+        return reply({ error: "AI 没有生成完整的教学内容，请再试一次。" }, 502);
+      }
+      const teaching = Object.fromEntries(fields.map(field => [field, simplify(output[field].trim()).slice(0, 800)]));
+      return reply({ mode: input.mode, source: input.messages.at(-1).content.trim(), ...teaching });
     }
     if (path === "/transcribe") {
       if (!/^audio\/(mp4|mpeg|wav|webm|x-m4a)(?:;|$)/i.test(request.headers.get("content-type") || "")) return reply({ error: "录音格式不支持。" }, 415);
