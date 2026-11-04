@@ -23,6 +23,7 @@
     .sub { margin: 0 0 28px; color: #667078; line-height: 1.5; }
     .ai-card { margin: 18px 0; padding: 24px; border-radius: 26px; background: #e9efd7; }
     .teacher-card { background: #e5f0ef; }
+    .knowledge-card { background: #e8eedc; }
     .notebook-card { background: #e8e8f5; }
     .listening-card { background: #f0e8dc; }
     .roleplay-card { background: #dcecf3; }
@@ -66,10 +67,11 @@
     .choice { display: block; width: 100%; margin: 9px 0; padding: 14px; border: 1px solid #d7ded6; border-radius: 13px; text-align: left; background: white; }
     .feedback { margin: 14px 0; color: #425523; line-height: 1.5; }
   </style>
-  <script src="./notebook.js?v=15" defer></script>
-  <script src="./listening.js?v=15" defer></script>
-  <script src="./ai-chat.js?v=15" defer></script>
-  <script src="./backup.js?v=15" defer></script>
+  <script src="./notebook.js?v=16" defer></script>
+  <script src="./listening.js?v=16" defer></script>
+  <script src="./knowledge.js?v=16" defer></script>
+  <script src="./ai-chat.js?v=16" defer></script>
+  <script src="./backup.js?v=16" defer></script>
 </head>
 <body>
   <main class="shell">
@@ -80,6 +82,11 @@
       <p class="kicker">提问解答 · 对话纠错</p><h2>AI 英语老师</h2>
       <p>不懂就问；也可以用英语聊天，查看建议表达和简短原因。</p>
       <button id="teacher-open">开始学习 →</button>
+    </section>
+    <section class="ai-card knowledge-card" aria-label="知识学习">
+      <p class="kicker">四个专项 · 每天 30 分钟</p><h2>知识学习</h2>
+      <p>在线单词、基础语法、句子翻译和阅读理解，选一项开始练。</p>
+      <p id="knowledge-summary">正在加载学习进度</p><button id="knowledge-open">选择专项 →</button>
     </section>
     <section class="ai-card listening-card" aria-label="分级听力">
       <p class="kicker">联网生成 · 先听后看</p><h2>分级听力</h2>
@@ -105,7 +112,7 @@
       <p id="notebook-summary">正在加载错句</p><button id="notebook-open">打开错句本 →</button>
     </section>
     <details class="backup"><summary>学习进度备份</summary><div class="backup-content">
-      <p>备份包含错句本、听力和任务对话进度。导出后请复制保存；恢复时粘贴备份文本再点击导入。</p>
+      <p>备份包含知识学习、错句本、听力和任务对话进度。导出后请复制保存；恢复时粘贴备份文本再点击导入。</p>
       <textarea id="backup-text" aria-label="进度备份文本"></textarea>
       <div class="backup-actions"><button id="backup-export">导出并复制</button><button id="backup-import">导入备份</button></div>
       <p id="backup-message" role="status"></p>
@@ -144,6 +151,12 @@
     </div>
   </section>
 
+  <section class="overlay" id="knowledge-view" aria-label="知识学习" hidden>
+    <div class="overlay-inner"><div class="overlay-top"><strong>知识学习</strong><button id="knowledge-close">关闭</button></div>
+      <p class="tip" id="knowledge-position" role="status"></p><div class="lesson-panel" id="knowledge-content"></div>
+      <div class="lesson-footer" id="knowledge-actions"></div></div>
+  </section>
+
   <section class="overlay" id="notebook-view" aria-label="我的错句本" hidden>
     <div class="overlay-inner"><div class="overlay-top"><strong>我的错句本</strong><button id="notebook-close">关闭</button></div>
       <p class="tip" id="notebook-position"></p><div class="lesson-panel" id="notebook-content"></div>
@@ -155,6 +168,6 @@
       <p class="tip" id="listening-position"></p><div class="lesson-panel" id="listening-content"></div>
       <div class="lesson-footer" id="listening-actions"></div></div>
   </section>
-  <script>if ("serviceWorker" in navigator) navigator.serviceWorker.register("./sw.js?v=15").catch(() => {});</script>
+  <script>if ("serviceWorker" in navigator) navigator.serviceWorker.register("./sw.js?v=16").catch(() => {});</script>
 </body>
 </html>

@@ -86,6 +86,43 @@ assert.equal(generatedBody.answer, 0);
 assert.equal(listeningCall.model, "@cf/meta/llama-3.3-70b-instruct-fp8-fast");
 assert.ok(listeningCall.input.messages[0].content.includes("咖啡店"));
 assert.equal((await handleRequest(post("/listening", JSON.stringify({ level: "错误", avoid: [] })), listeningEnv)).status, 400);
+const knowledgeEnv = { ...env, AI: { async run(model, input) {
+  return { response: { acceptable: true } };
+} } };
+for (const mode of ["words", "grammar", "translate", "reading"]) {
+  const response = await handleRequest(post("/knowledge", JSON.stringify({ action: "generate", mode, topic: 0, avoid: [] })), knowledgeEnv);
+  assert.equal(response.status, 200, mode);
+  const pack = await response.json();
+  assert.equal(pack.mode, mode);
+  if (mode === "words") {
+    assert.equal(pack.items.length, 5);
+    assert.ok(pack.items.every(item => item.en && item.zh && item.example && item.exampleZh));
+  }
+  if (mode === "grammar") {
+    assert.equal(pack.questions.length, 3);
+    assert.equal(pack.examples[0].zh, "我累了。");
+  }
+  if (mode === "translate") {
+    assert.equal(pack.items.length, 3);
+    assert.ok(pack.items.every(item => item.zh && item.reference && item.hint));
+  }
+  if (mode === "reading") {
+    assert.equal(pack.questions.length, 3);
+    assert.ok(pack.passage.split(/\s+/).length >= 50);
+    for (const question of pack.questions) {
+      assert.equal(new Set(question.options).size, 3);
+      assert.ok(question.answer >= 0 && question.answer < 3);
+    }
+  }
+}
+for (let i = 0; i < 50; i++) {
+  const pack = await (await handleRequest(post("/knowledge", JSON.stringify({ action: "generate", mode: "reading", avoid: [] })), knowledgeEnv)).json();
+  assert.ok(pack.passage.split(/\s+/).length >= 50);
+  for (const question of pack.questions) assert.equal(new Set(question.options).size, 3);
+}
+const checked = await handleRequest(post("/knowledge", JSON.stringify({ action: "check", mode: "translate", source: "我想要水。", reference: "I would like water.", answer: "I would like some water." })), knowledgeEnv);
+assert.deepEqual(await checked.json(), { acceptable: true, feedback: "意思表达正确，可以继续下一句。", improved: "I would like some water.", reference: "I would like water." });
+assert.equal((await handleRequest(post("/knowledge", JSON.stringify({ action: "generate", mode: "invalid", avoid: [] })), knowledgeEnv)).status, 400);
 const roleplayEnv = { ...env, AI: { async run() { return { response: { reply: "What size would you like?", hint: "你想要多大杯？", completed: true, feedback: "记得说出杯型。", better: "I'd like a small coffee, please." } }; } } };
 const roleplayBody = turn => JSON.stringify({ scene: "cafe", turn, messages: [{ role: "user", content: "I'd like coffee." }] });
 const roleplayStart = await (await handleRequest(post("/roleplay", roleplayBody(1)), roleplayEnv)).json();

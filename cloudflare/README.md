@@ -1,8 +1,10 @@
 # 免费 AI 对话服务
 
-本目录是 WordSpring 的 Cloudflare Worker。GitHub Pages 仍托管原网页，Worker 处理 AI 对话、英语老师、任务对话、实时分级听力、中英翻译和短录音转文字。对话、提问、翻译内容和录音会发送至 Cloudflare。访问口令保存为 Worker Secret，不写进公开仓库；手机端仅把口令存在本机 Safari 网站数据中，不随学习进度备份导出。
+本目录是 WordSpring 的 Cloudflare Worker。GitHub Pages 仍托管原网页，Worker 处理知识学习、AI 对话、英语老师、任务对话、实时分级听力、中英翻译和短录音转文字。对话、提问、翻译内容和录音会发送至 Cloudflare。访问口令保存为 Worker Secret，不写进公开仓库；手机端仅把口令存在本机 Safari 网站数据中，不随学习进度备份导出。
 
 语音识别模型有时返回繁体字。Worker 使用 OpenCC 在返回识别文字前转换为中国大陆简体中文；部署前在本目录运行 `pnpm install` 安装锁定版本的依赖。
+
+知识学习的 `/knowledge` 接口提供在线单词、语法、句子翻译、阅读理解。100 个词与例句、语法题、中文翻译原句及阅读短文在 Worker 中保存经核对的内容，再在线选择或组合；Workers AI 仅判断翻译答案能否表达原意，页面提供明确的中文提示和参考表达。四项均使用与其他 AI 入口相同的访问口令。前端把当前一组和完成次数保存在本机并纳入 v3 备份。
 
 ## 免费边界
 
@@ -16,6 +18,6 @@
 4. 执行 `npx wrangler secret put PASSCODE`，输入一段仅本人知道的随机口令。不要把口令写入文件或发送到聊天中。
 5. 用户的 iPhone 无法连接 `workers.dev`，所以网页改用 `https://wordspring-ai-pages.pages.dev`。Pages Function 通过服务绑定在 Cloudflare 内部调用 `wordspring-ai` Worker；所有 AI 入口共用同一访问口令。在任一 AI 入口的“服务设置”中填写口令。发布网页后用真机验证文字、录音、朗读及额度错误提示。
 
-本地检查：在仓库根目录运行 `node cloudflare/check.mjs` 和 `node check-ai-ui.cjs`。这些测试使用模拟 AI，不消耗免费额度。真机上的 Safari 录音格式和 Cloudflare 模型联通性仍需部署后验证。
+本地检查：在仓库根目录运行 `node cloudflare/check.mjs`、`node check-knowledge.cjs` 和 `node check-ai-ui.cjs`。这些测试使用模拟 AI，不消耗免费额度。真机上的 Safari 录音格式和 Cloudflare 模型联通性仍需部署后验证。
 
 Cloudflare 官方说明，中国大陆访问其全球网络可能出现较高延迟或连接不稳定；免费方案不包含单独的中国网络。因此“手机独立使用”不等于保证在所有网络下 AI 对话都可用，需要在用户常用的移动网络上实际测试。[Cloudflare 中国网络说明](https://developers.cloudflare.com/china-network/)
