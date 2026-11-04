@@ -107,10 +107,10 @@ export async function handleRequest(request, env) {
         return reply({ error: "教学内容无效。" }, 400);
       }
       const asking = input.mode === "ask";
-      const fields = asking ? ["answer", "example", "meaning"] : ["corrected", "reason", "reply", "hint"];
+      const fields = asking ? ["answer", "example", "meaning"] : ["corrected", "meaning", "reason", "reply", "hint"];
       const prompt = asking
         ? "You are a patient English teacher for a Chinese absolute beginner. Put only the direct explanation in answer, using one or two short Simplified Chinese sentences. Put exactly one simple A1 English sentence in example and its Simplified Chinese translation in meaning. Do not repeat the example or translation inside answer. Use previous turns only to understand follow-up questions. Do not pretend to assess pronunciation. No field may be empty. Return only the requested JSON fields."
-        : "You are a patient English conversation tutor for a Chinese absolute beginner. For the learner's latest message, correct at most one important English error. The corrected field must contain a complete English sentence. The reason field must ALWAYS contain one short Simplified Chinese sentence explaining the change. If the English is natural, copy it exactly into corrected and write '这句话自然，无需修改。' in reason; do not force punctuation or style changes. If the learner wrote Chinese, put a natural simple English equivalent in corrected and write '这是对应的英文表达。' in reason. Then continue with one short A1 English sentence or question in reply. The hint field must ALWAYS contain a short Simplified Chinese translation of reply. No field may be empty. Judge the text only; never claim to assess pronunciation. Return only the requested JSON fields.";
+        : "You are a patient English conversation tutor for a Chinese absolute beginner. For the learner's latest message, correct at most one important English error. The corrected field must contain a complete English sentence. The meaning field must contain its short Simplified Chinese translation. The reason field must ALWAYS contain one short Simplified Chinese sentence explaining the change. If the English is natural, copy it exactly into corrected and write '这句话自然，无需修改。' in reason; do not force punctuation or style changes. If the learner wrote Chinese, put a natural simple English equivalent in corrected and write '这是对应的英文表达。' in reason. Then continue with one short A1 English sentence or question in reply. The hint field must ALWAYS contain a short Simplified Chinese translation of reply. No field may be empty. Judge the text only; never claim to assess pronunciation. Return only the requested JSON fields.";
       const result = await env.AI.run(TEACH_MODEL, {
         messages: [{ role: "system", content: prompt }, ...input.messages],
         response_format: {
@@ -135,6 +135,68 @@ export async function handleRequest(request, env) {
       }
       const teaching = Object.fromEntries(fields.map(field => [field, simplify(output[field].trim()).slice(0, 800)]));
       return reply({ mode: input.mode, source: input.messages.at(-1).content.trim(), ...teaching });
+    }
+    if (path === "/roleplay") {
+      if (Number(request.headers.get("content-length")) > 5000) return reply({ error: "任务对话太长。" }, 413);
+      const body = await request.text();
+      if (body.length > 5000) return reply({ error: "任务对话太长。" }, 413);
+      let input;
+      try { input = JSON.parse(body); } catch { return reply({ error: "任务对话内容无效。" }, 400); }
+      const scenes = {
+        cafe: "You are a café clerk. The learner must order a drink, say its size, and ask or confirm its price.",
+        directions: "You are a local resident. The learner must ask how to reach the library and confirm a direction.",
+        shop: "You are a shop clerk. The learner must ask for an item, ask about its size, and say they will buy it.",
+        hotel: "You are a hotel receptionist. The learner must check in and ask about breakfast time."
+      };
+      const examples = {
+        cafe: "I'd like a small coffee, please. How much is it?",
+        directions: "Could you tell me how to get to the library?",
+        shop: "Do you have this in medium? I'll take it.",
+        hotel: "I'd like to check in. What time is breakfast?"
+      };
+      if (!input || !Object.hasOwn(scenes, input.scene) || !Number.isInteger(input.turn) || input.turn < 1 || input.turn > 5 ||
+          !Array.isArray(input.messages) || input.messages.length < 1 || input.messages.length > 9 ||
+          input.messages.some(item => !item || !["user", "assistant"].includes(item.role) || typeof item.content !== "string" || !item.content.trim() || item.content.length > 400) ||
+          input.messages.at(-1).role !== "user") return reply({ error: "任务对话内容无效。" }, 400);
+      const prompt = `You are a patient A1 English roleplay partner for a Chinese absolute beginner. ${scenes[input.scene]} Reply as the character, using one short natural English sentence or question in reply. Put a short Simplified Chinese translation of reply in hint. Set completed to true only if the learner has achieved every task goal. If a learner writes Chinese, show a natural English expression and continue the roleplay. Never assess pronunciation. Turn ${input.turn} of 5. Return only the requested JSON fields.`;
+      const result = await env.AI.run(TEACH_MODEL, {
+        messages: [{ role: "system", content: prompt }, ...input.messages],
+        response_format: { type: "json_schema", json_schema: { type: "object", properties: {
+          reply: { type: "string", minLength: 1 }, hint: { type: "string", minLength: 1 },
+          completed: { type: "boolean" }
+        }, required: ["reply", "hint", "completed"], additionalProperties: false } },
+        max_tokens: 160, temperature: 0.2
+      });
+      let output = result.response;
+      if (typeof output === "string") { try { output = JSON.parse(output); } catch { output = null; } }
+      if (!output || typeof output.completed !== "boolean" || typeof output.reply !== "string" || !/[A-Za-z]/.test(output.reply))
+        return reply({ error: "任务对话未生成完整回复，请重试。" }, 502);
+      const completed = input.turn >= 3 && output.completed;
+      const finished = completed || input.turn === 5;
+      let hint = typeof output.hint === "string" ? simplify(output.hint.trim()) : "";
+      if (!/[\u3400-\u9fff]/.test(hint)) {
+        const translated = await env.AI.run(TRANSLATION_MODEL, { text: output.reply.trim(), source_lang: "en", target_lang: "zh" });
+        hint = typeof translated.translated_text === "string" ? simplify(translated.translated_text.trim()) : "";
+      }
+      if (!/[\u3400-\u9fff]/.test(hint)) hint = "请听英文回复，再用英语回答。";
+      let feedback = "继续练习用完整句子表达自己的需求。";
+      let better = examples[input.scene];
+      if (finished) {
+        const review = await env.AI.run(TEACH_MODEL, {
+          messages: [{ role: "system", content: `You are an English teacher for a Chinese A1 beginner. The roleplay goal was: ${scenes[input.scene]} Give one specific, kind improvement suggestion about the learner's actual English in feedback (Simplified Chinese). Put one better complete A1 English sentence the learner could say in better. Do not assess pronunciation. Return only JSON.` },
+            ...input.messages],
+          response_format: { type: "json_schema", json_schema: { type: "object", properties: {
+            feedback: { type: "string", minLength: 1 }, better: { type: "string", minLength: 1 }
+          }, required: ["feedback", "better"], additionalProperties: false } },
+          max_tokens: 140, temperature: 0.2
+        });
+        let suggestion = review.response;
+        if (typeof suggestion === "string") { try { suggestion = JSON.parse(suggestion); } catch { suggestion = null; } }
+        if (suggestion && typeof suggestion.feedback === "string" && /[\u3400-\u9fff]/.test(suggestion.feedback)) feedback = simplify(suggestion.feedback.trim());
+        if (suggestion && typeof suggestion.better === "string" && /[A-Za-z]{2,}/.test(suggestion.better) && !/^none$/i.test(suggestion.better.trim())) better = suggestion.better.trim();
+      }
+      return reply({ scene: input.scene, reply: output.reply.trim().slice(0, 500), hint: hint.slice(0, 500),
+        completed, finished, feedback: feedback.slice(0, 500), better: better.slice(0, 500) });
     }
     if (path === "/transcribe") {
       if (!/^audio\/(mp4|mpeg|wav|webm|x-m4a)(?:;|$)/i.test(request.headers.get("content-type") || "")) return reply({ error: "录音格式不支持。" }, 415);

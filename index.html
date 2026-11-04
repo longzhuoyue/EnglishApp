@@ -77,6 +77,9 @@
     .speaking-card button[hidden], #speaking-again[hidden] { display: none; }
     .ai-card { margin: 18px 0; padding: 24px; border-radius: 26px; background: #e9efd7; }
     .teacher-card { background: #e5f0ef; }
+    .listening-card { background: #f0e8dc; }
+    .notebook-card { background: #e8e8f5; }
+    .roleplay-card { background: #dcecf3; }
     .ai-card h2 { margin: 0 0 8px; font-size: 24px; }
     .ai-card p { color: #4c615d; line-height: 1.5; }
     .ai-card button { width: 100%; min-height: 50px; border-radius: 14px; background: #14212d; color: white; font-weight: 750; }
@@ -142,7 +145,7 @@
     .learning-row div { flex: 1; }
     .learning-row strong, .learning-row small { display: block; }
     .learning-row small { margin-top: 5px; color: #667078; }
-    .dialogue-line { margin: 13px 0; padding: 13px; border-radius: 14px; background: #f5f5f0; }
+    .dialogue-line { margin: 13px 0; padding: 13px; border-radius: 14px; background: #f5f5f0; white-space: pre-wrap; }
     .dialogue-line b { color: #607020; }
     .dialogue-line small { display: block; margin-top: 6px; color: #667078; }
     .choice { display: block; width: 100%; margin: 9px 0; padding: 14px; border: 1px solid #d7ded6; border-radius: 13px; text-align: left; background: white; }
@@ -157,10 +160,12 @@
     .done-mark { display: grid; place-items: center; width: 64px; height: 64px; margin: 12px 0 22px; border-radius: 20px; background: #c9ef57; font-size: 32px; }
     audio { width: 100%; margin-top: 14px; }
   </style>
-  <script src="./app.js?v=12" defer></script>
-  <script src="./course.js?v=6" defer></script>
+  <script src="./app.js?v=13" defer></script>
+  <script src="./course.js?v=13" defer></script>
   <script src="./speaking.js?v=6" defer></script>
-  <script src="./ai-chat.js?v=12" defer></script>
+  <script src="./notebook.js?v=13" defer></script>
+  <script src="./listening.js?v=13" defer></script>
+  <script src="./ai-chat.js?v=13" defer></script>
 </head>
 <body>
   <main class="shell">
@@ -193,6 +198,22 @@
       <p>不懂就问；也可以用英语聊天，查看建议改法、简短原因和英文回应。</p>
       <button id="teacher-open">开始学习 →</button>
     </section>
+    <section class="ai-card notebook-card" aria-label="我的错句本">
+      <p class="kicker">纠错后保存 · 定期复习</p><h2>我的错句本</h2>
+      <p id="notebook-summary">保存英语老师的建议表达，之后自己回想、朗读并复习。</p>
+      <button id="notebook-open">打开错句本 →</button>
+    </section>
+    <section class="ai-card listening-card" aria-label="分级听力">
+      <p class="kicker">先听后看 · 无需 AI 额度</p><h2>分级听力</h2>
+      <p id="listening-summary">从短对话开始，听完回答问题，再看字幕和译文。</p>
+      <button id="listening-open">开始听力练习 →</button>
+    </section>
+    <section class="ai-card roleplay-card" aria-label="任务对话">
+      <p class="kicker">有目标的交流 · 需要联网</p><h2>任务对话</h2>
+      <p>选一个生活任务，和 AI 对话 3–5 轮，完成后获得一句改进建议。</p>
+      <p id="roleplay-summary"></p>
+      <button id="roleplay-open">选择任务 →</button>
+    </section>
     <section class="ai-card" aria-label="中英翻译">
       <p class="kicker">免费额度 · 需要联网</p>
       <h2>中英翻译</h2>
@@ -210,7 +231,7 @@
     </div>
     <button class="start" id="start" disabled><span><strong id="start-title">正在加载</strong><small id="start-detail">请稍候</small></span><span class="start-arrow" aria-hidden="true">→</span></button>
     <details class="extra"><summary>查看拓展词库 <span id="library-count"></span></summary><div class="extra-content" id="library"></div></details>
-    <details class="backup"><summary>学习进度备份</summary><div class="backup-content"><p>备份包含课程、口语专项与拓展词库进度。点击导出后可复制文本保存；恢复时粘贴备份文本再点击导入。</p><textarea id="backup-text" aria-label="进度备份文本"></textarea><div class="backup-actions"><button id="backup-export">导出并复制</button><button id="backup-import">导入备份</button></div><p id="backup-message" role="status"></p></div></details>
+    <details class="backup"><summary>学习进度备份</summary><div class="backup-content"><p>备份包含课程、口语、词库、错句本、听力和任务对话进度。点击导出后可复制文本保存；恢复时粘贴备份文本再点击导入。</p><textarea id="backup-text" aria-label="进度备份文本"></textarea><div class="backup-actions"><button id="backup-export">导出并复制</button><button id="backup-import">导入备份</button></div><p id="backup-message" role="status"></p></div></details>
   </main>
 
   <section class="overlay" id="speaking-view" aria-label="口语练习" hidden>
@@ -238,7 +259,12 @@
       <div id="teacher-controls" hidden><label for="teacher-mode">学习方式</label>
       <select id="teacher-mode" class="write-box" style="min-height:48px;height:48px"><option value="ask">问老师</option><option value="correct">纠错对话</option></select>
       <p class="tip" id="teacher-help">可以用中文或英文提问，继续追问也可以。</p></div>
+      <div id="roleplay-controls" hidden><label for="roleplay-scene">本次任务</label>
+        <select id="roleplay-scene" class="write-box" style="min-height:48px;height:48px"><option value="cafe">咖啡店：点饮料并确认价格</option><option value="directions">问路：找到图书馆并确认方向</option><option value="shop">商店：买东西并询问尺码</option><option value="hotel">酒店：办理入住并询问早餐</option></select>
+        <p class="tip" id="roleplay-goal"></p><p class="tip" id="roleplay-turns"></p>
+        <button class="utility-button" id="roleplay-restart">重新开始此任务</button></div>
       <div class="ai-history" id="ai-history" aria-live="polite"></div>
+      <div class="ai-history" id="roleplay-history" aria-live="polite" hidden></div>
       <div class="ai-history" id="teacher-ask-history" aria-live="polite" hidden></div>
       <div class="ai-history" id="teacher-correct-history" aria-live="polite" hidden></div>
       <div class="ai-line" id="translation-result" hidden><strong>原文</strong><p id="translation-source"></p><strong>译文</strong><p id="translation-text"></p><button class="utility-button" id="translation-play">♪ 朗读译文</button></div>
@@ -247,6 +273,18 @@
       <div class="ai-tools"><button class="secondary" id="ai-record">● 录音转文字</button><button class="primary" id="ai-send">发送 →</button></div>
       <p class="tip" id="ai-status" role="status">先设置免费 AI 服务，再开始对话。</p>
     </div>
+  </section>
+
+  <section class="overlay" id="notebook-view" aria-label="我的错句本" hidden>
+    <div class="overlay-inner"><div class="overlay-top"><strong>我的错句本</strong><button id="notebook-close">关闭</button></div>
+      <p class="tip" id="notebook-position"></p><div class="lesson-panel" id="notebook-content"></div>
+      <div class="lesson-footer" id="notebook-actions"></div></div>
+  </section>
+
+  <section class="overlay" id="listening-view" aria-label="分级听力" hidden>
+    <div class="overlay-inner"><div class="overlay-top"><strong>分级听力</strong><button id="listening-close">关闭</button></div>
+      <p class="tip" id="listening-position"></p><div class="lesson-panel" id="listening-content"></div>
+      <div class="lesson-footer" id="listening-actions"></div></div>
   </section>
 
   <section class="overlay" id="lesson-view" aria-label="课程学习" hidden>

@@ -59,16 +59,32 @@ const teachEnv = { ...env, AI: { async run(model, input) {
   teachCalls.push({ model, input });
   return { response: teachCalls.length === 1
     ? { answer: "go 的过去式是 went。", example: "I went to the store yesterday.", meaning: "我昨天去了商店。" }
-    : { corrected: "I went to the store yesterday.", reason: "go 的过去式是 went。", reply: "What did you buy?", hint: "你买了什么？" } };
+    : { corrected: "I went to the store yesterday.", meaning: "我昨天去了商店。", reason: "go 的过去式是 went。", reply: "What did you buy?", hint: "你买了什么？" } };
 } } };
 const ask = await handleRequest(post("/teach", JSON.stringify({ mode: "ask", messages: [{ role: "user", content: "为什么 go 变成 went？" }] })), teachEnv);
 assert.deepEqual(await ask.json(), { mode: "ask", source: "为什么 go 变成 went？", answer: "go 的过去式是 went。", example: "I went to the store yesterday.", meaning: "我昨天去了商店。" });
 const correction = await handleRequest(post("/teach", JSON.stringify({ mode: "correct", messages: [{ role: "user", content: "I goed to the store yesterday." }] })), teachEnv);
-assert.deepEqual(await correction.json(), { mode: "correct", source: "I goed to the store yesterday.", corrected: "I went to the store yesterday.", reason: "go 的过去式是 went。", reply: "What did you buy?", hint: "你买了什么？" });
+assert.deepEqual(await correction.json(), { mode: "correct", source: "I goed to the store yesterday.", corrected: "I went to the store yesterday.", meaning: "我昨天去了商店。", reason: "go 的过去式是 went。", reply: "What did you buy?", hint: "你买了什么？" });
 assert.equal(teachCalls[0].model, "@cf/meta/llama-3.3-70b-instruct-fp8-fast");
 assert.equal(teachCalls[0].input.response_format.type, "json_schema");
 assert.equal(teachCalls[1].input.messages.at(-1).content, "I goed to the store yesterday.");
 assert.equal((await handleRequest(post("/teach", JSON.stringify({ mode: "other", messages: [{ role: "user", content: "hello" }] })), env)).status, 400);
+const roleplayEnv = { ...env, AI: { async run() { return { response: { reply: "What size would you like?", hint: "你想要多大杯？", completed: true, feedback: "记得说出杯型。", better: "I'd like a small coffee, please." } }; } } };
+const roleplayBody = turn => JSON.stringify({ scene: "cafe", turn, messages: [{ role: "user", content: "I'd like coffee." }] });
+const roleplayStart = await (await handleRequest(post("/roleplay", roleplayBody(1)), roleplayEnv)).json();
+assert.equal(roleplayStart.completed, false);
+assert.equal(roleplayStart.finished, false);
+const roleplayFinish = await (await handleRequest(post("/roleplay", roleplayBody(3)), roleplayEnv)).json();
+assert.equal(roleplayFinish.completed, true);
+assert.equal(roleplayFinish.finished, true);
+assert.equal(roleplayFinish.reply, "What size would you like?");
+const fallbackEnv = { ...env, AI: { async run(model) { return model === "@cf/meta/m2m100-1.2b"
+  ? { translated_text: "你想要多大杯？" }
+  : { response: { reply: "What size would you like?", hint: "}2", completed: false } }; } } };
+const fallback = await (await handleRequest(post("/roleplay", roleplayBody(1)), fallbackEnv)).json();
+assert.equal(fallback.hint, "你想要多大杯？");
+assert.equal(fallback.finished, false);
+assert.equal((await handleRequest(post("/roleplay", JSON.stringify({ scene: "other", turn: 1, messages: [{ role: "user", content: "Hello" }] })), roleplayEnv)).status, 400);
 const speech = await handleRequest(post("/transcribe", new Uint8Array([1, 2, 3]), "audio/mp4"), env);
 assert.equal((await speech.json()).transcript, "我想点一杯咖啡。你今天怎么样？学习英语很有趣。");
 assert.equal(calls[1].input.audio.length, 3);

@@ -326,7 +326,11 @@ function startCourse() {
 
   byId("backup-export").addEventListener("click", async () => {
     try {
-      const payload = { format: "wordspring-backup-v1", course: progress, wordReviews: JSON.parse(localStorage.getItem(WORD_REVIEW_KEY) || "{}"), speaking: JSON.parse(localStorage.getItem(SPEAKING_REVIEW_KEY) || "null") };
+      const payload = { format: "wordspring-backup-v1", course: progress, wordReviews: JSON.parse(localStorage.getItem(WORD_REVIEW_KEY) || "{}"),
+        speaking: JSON.parse(localStorage.getItem(SPEAKING_REVIEW_KEY) || "null"),
+        notebook: JSON.parse(localStorage.getItem(NOTEBOOK_KEY) || "[]"),
+        listening: JSON.parse(localStorage.getItem(LISTENING_KEY) || "[]"),
+        roleplay: JSON.parse(localStorage.getItem(ROLEPLAY_KEY) || "[]") };
       const text = JSON.stringify(payload);
       byId("backup-text").value = text;
       byId("backup-text").select();
@@ -337,19 +341,22 @@ function startCourse() {
   byId("backup-import").addEventListener("click", () => {
     try {
       const payload = JSON.parse(byId("backup-text").value);
-      if (payload.format !== "wordspring-backup-v1" || !validProgress(payload.course) || !payload.wordReviews || typeof payload.wordReviews !== "object" || Array.isArray(payload.wordReviews) || payload.speaking != null && !validSpeakingProgress(payload.speaking)) throw new Error("格式不正确");
+      if (payload.format !== "wordspring-backup-v1" || !validProgress(payload.course) || !payload.wordReviews || typeof payload.wordReviews !== "object" || Array.isArray(payload.wordReviews) ||
+          payload.speaking != null && !validSpeakingProgress(payload.speaking) ||
+          !validNotebook(payload.notebook || []) || !validListening(payload.listening || []) ||
+          !validRoleplayProgress(payload.roleplay || [])) throw new Error("格式不正确");
       if (!confirm("导入会替换这台设备上现有的学习进度。确定继续吗？")) return;
-      const oldCourse = localStorage.getItem(COURSE_KEY);
-      const oldWords = localStorage.getItem(WORD_REVIEW_KEY);
-      const oldSpeaking = localStorage.getItem(SPEAKING_REVIEW_KEY);
+      const keys = [COURSE_KEY, WORD_REVIEW_KEY, SPEAKING_REVIEW_KEY, NOTEBOOK_KEY, LISTENING_KEY, ROLEPLAY_KEY];
+      const old = keys.map(key => localStorage.getItem(key));
       try {
         localStorage.setItem(COURSE_KEY, JSON.stringify(payload.course));
         localStorage.setItem(WORD_REVIEW_KEY, JSON.stringify(payload.wordReviews));
-        if (payload.speaking != null) localStorage.setItem(SPEAKING_REVIEW_KEY, JSON.stringify(payload.speaking));
+        if (payload.speaking != null) localStorage.setItem(SPEAKING_REVIEW_KEY, JSON.stringify(payload.speaking)); else localStorage.removeItem(SPEAKING_REVIEW_KEY);
+        localStorage.setItem(NOTEBOOK_KEY, JSON.stringify(payload.notebook || []));
+        localStorage.setItem(LISTENING_KEY, JSON.stringify(payload.listening || []));
+        localStorage.setItem(ROLEPLAY_KEY, JSON.stringify(payload.roleplay || []));
       } catch (error) {
-        if (oldCourse === null) localStorage.removeItem(COURSE_KEY); else localStorage.setItem(COURSE_KEY, oldCourse);
-        if (oldWords === null) localStorage.removeItem(WORD_REVIEW_KEY); else localStorage.setItem(WORD_REVIEW_KEY, oldWords);
-        if (oldSpeaking === null) localStorage.removeItem(SPEAKING_REVIEW_KEY); else localStorage.setItem(SPEAKING_REVIEW_KEY, oldSpeaking);
+        keys.forEach((key, index) => { try { if (old[index] === null) localStorage.removeItem(key); else localStorage.setItem(key, old[index]); } catch { /* Keep best effort rollback. */ } });
         throw error;
       }
       location.reload();
