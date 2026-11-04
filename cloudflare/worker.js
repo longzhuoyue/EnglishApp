@@ -136,6 +136,47 @@ export async function handleRequest(request, env) {
       const teaching = Object.fromEntries(fields.map(field => [field, simplify(output[field].trim()).slice(0, 800)]));
       return reply({ mode: input.mode, source: input.messages.at(-1).content.trim(), ...teaching });
     }
+    if (path === "/listening") {
+      if (Number(request.headers.get("content-length")) > 1000) return reply({ error: "听力请求太长。" }, 413);
+      const body = await request.text();
+      if (body.length > 1000) return reply({ error: "听力请求太长。" }, 413);
+      let input;
+      try { input = JSON.parse(body); } catch { return reply({ error: "听力请求无效。" }, 400); }
+      if (!input || !["入门", "基础", "进阶"].includes(input.level) || !Array.isArray(input.avoid) ||
+          input.avoid.length > 5 || input.avoid.some(title => typeof title !== "string" || title.length > 40))
+        return reply({ error: "听力请求无效。" }, 400);
+      const scenes = ["咖啡店", "公交站", "超市", "图书馆", "酒店", "公园", "餐厅", "机场", "药店", "周末计划", "朋友见面", "购物", "天气", "看电影", "约时间", "询问价格", "找洗手间", "学校", "打电话", "点外卖"];
+      const scene = scenes[Math.floor(Math.random() * scenes.length)];
+      const levelGuide = { 入门: "A1: 3 very short lines, about 4–8 words per English line.", 基础: "A1–A2: 4 lines, about 5–12 words per English line.", 进阶: "A2: 4 lines, about 7–15 words per English line." };
+      const prompt = `Create a fresh listening exercise for a Chinese learner. Level ${input.level}. ${levelGuide[input.level]} Everyday scenario: ${scene}. Avoid repeating these titles or the same situation: ${input.avoid.join("、") || "none"}. Write a natural alternating A/B English dialogue and an accurate Simplified Chinese translation for every line. The Chinese title and question must be short. Ask one factual comprehension question answered unambiguously by the dialogue. Give exactly 3 distinct Simplified Chinese options, with one correct answer; answer is its zero-based index. No phonetic transcription or pronunciation score. Return only the requested JSON.`;
+      const result = await env.AI.run(TEACH_MODEL, {
+        messages: [{ role: "system", content: prompt }, { role: "user", content: `Generate a different ${input.level} listening practice now.` }],
+        response_format: { type: "json_schema", json_schema: { type: "object", properties: {
+          title: { type: "string" },
+          lines: { type: "array", minItems: 3, maxItems: 4, items: { type: "object", properties: {
+            speaker: { type: "string", enum: ["A", "B"] }, en: { type: "string" }, zh: { type: "string" }
+          }, required: ["speaker", "en", "zh"], additionalProperties: false } },
+          question: { type: "string" }, options: { type: "array", minItems: 3, maxItems: 3, items: { type: "string" } },
+          answer: { type: "integer", minimum: 0, maximum: 2 }
+        }, required: ["title", "lines", "question", "options", "answer"], additionalProperties: false } },
+        max_tokens: 650, temperature: 0.65
+      });
+      let output = result.response;
+      if (typeof output === "string") { try { output = JSON.parse(output); } catch { output = null; } }
+      if (!output || typeof output.title !== "string" || !/[\u3400-\u9fff]/.test(output.title) ||
+          !Array.isArray(output.lines) || output.lines.length < 3 || output.lines.length > 4 ||
+          output.lines.some((line, index) => !line || line.speaker !== (index % 2 ? "B" : "A") ||
+            typeof line.en !== "string" || !/[A-Za-z]/.test(line.en) || typeof line.zh !== "string" || !/[\u3400-\u9fff]/.test(line.zh)) ||
+          typeof output.question !== "string" || !/[\u3400-\u9fff]/.test(output.question) ||
+          !Array.isArray(output.options) || output.options.length !== 3 ||
+          output.options.some(option => typeof option !== "string" || !option.trim()) ||
+          new Set(output.options).size !== 3 || !Number.isInteger(output.answer) || output.answer < 0 || output.answer > 2)
+        return reply({ error: "这次听力内容生成不完整，请再试一次。" }, 502);
+      return reply({ level: input.level, title: simplify(output.title.trim()).slice(0, 60),
+        lines: output.lines.map(line => [line.speaker, line.en.trim().slice(0, 180), simplify(line.zh.trim()).slice(0, 180)]),
+        question: simplify(output.question.trim()).slice(0, 180),
+        options: output.options.map(option => simplify(option.trim()).slice(0, 100)), answer: output.answer });
+    }
     if (path === "/roleplay") {
       if (Number(request.headers.get("content-length")) > 5000) return reply({ error: "任务对话太长。" }, 413);
       const body = await request.text();

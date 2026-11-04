@@ -1,30 +1,29 @@
 const LISTENING_KEY = "wordspring-listening-v1";
-const LISTENING = [
-  { id: "a1", level: "入门", title: "打招呼", lines: [["A", "Good morning, Mia.", "早上好，米娅。"], ["B", "Good morning! How are you?", "早上好！你好吗？"], ["A", "I'm fine, thanks.", "我很好，谢谢。"]], question: "他们什么时候见面？", options: ["早上", "晚上", "周末"], answer: 0 },
-  { id: "a2", level: "入门", title: "介绍名字", lines: [["A", "Hi, I'm Ben. What's your name?", "嗨，我是本。你叫什么名字？"], ["B", "I'm Lily. Nice to meet you.", "我是莉莉。很高兴认识你。"], ["A", "Nice to meet you too.", "我也很高兴认识你。"]], question: "女生叫什么名字？", options: ["Mia", "Lily", "Anna"], answer: 1 },
-  { id: "a3", level: "入门", title: "喝点什么", lines: [["A", "Would you like tea or water?", "你想喝茶还是水？"], ["B", "Water, please.", "请给我水。"], ["A", "Here you are.", "给你。"]], question: "B 要喝什么？", options: ["茶", "果汁", "水"], answer: 2 },
-  { id: "b1", level: "基础", title: "咖啡店", lines: [["A", "I'd like a small coffee, please.", "我想要一杯小杯咖啡。"], ["B", "Hot or iced?", "热的还是冰的？"], ["A", "Hot, please. How much is it?", "热的。多少钱？"], ["B", "It's three dollars.", "三美元。"]], question: "咖啡多少钱？", options: ["两美元", "三美元", "四美元"], answer: 1 },
-  { id: "b2", level: "基础", title: "问时间", lines: [["A", "What time does the bus leave?", "公交车几点出发？"], ["B", "It leaves at nine thirty.", "九点半出发。"], ["A", "Great, we have ten minutes.", "太好了，我们还有十分钟。"]], question: "公交车几点出发？", options: ["九点", "九点半", "十点半"], answer: 1 },
-  { id: "b3", level: "基础", title: "找图书馆", lines: [["A", "Excuse me, where is the library?", "打扰一下，图书馆在哪儿？"], ["B", "Go straight and turn left at the bank.", "直走，在银行左转。"], ["A", "Thank you!", "谢谢！"]], question: "在哪里转弯？", options: ["银行", "学校", "公园"], answer: 0 },
-  { id: "c1", level: "进阶", title: "周末计划", lines: [["A", "Are you free on Saturday afternoon?", "周六下午你有空吗？"], ["B", "I have a class until two, but I'm free after that.", "我上课到两点，之后有空。"], ["A", "Let's meet at the park at three.", "那我们三点在公园见。"]], question: "他们约在几点见面？", options: ["两点", "三点", "四点"], answer: 1 },
-  { id: "c2", level: "进阶", title: "餐厅点餐", lines: [["A", "Do you have anything without meat?", "你们有不含肉的菜吗？"], ["B", "Yes, the vegetable noodles are popular.", "有，蔬菜面很受欢迎。"], ["A", "That sounds good. I'll have one bowl.", "听起来不错。我要一碗。"]], question: "客人点了什么？", options: ["鸡肉饭", "蔬菜面", "汤"], answer: 1 },
-  { id: "c3", level: "进阶", title: "改约时间", lines: [["A", "Can we meet at four instead of three?", "我们能改成四点见吗？"], ["B", "Sorry, I work until four thirty.", "抱歉，我工作到四点半。"], ["A", "Then let's meet at five.", "那我们五点见。"], ["B", "Five works for me.", "五点可以。"]], question: "最后约定几点？", options: ["三点", "四点半", "五点"], answer: 2 }
-];
+const LISTENING_ENDPOINT = "https://wordspring-ai-pages.pages.dev/listening";
+const OLD_LISTENING_IDS = ["a1", "a2", "a3", "b1", "b2", "b3", "c1", "c2", "c3"];
 
 function validListening(value) {
-  return Array.isArray(value) && value.length <= LISTENING.length && value.every(id =>
-    typeof id === "string" && LISTENING.some(item => item.id === id));
+  if (Array.isArray(value)) return value.length <= 9 && value.every(id => OLD_LISTENING_IDS.includes(id));
+  return value && Number.isInteger(value.completed) && value.completed >= 0 && value.completed <= 100000 &&
+    Array.isArray(value.recentTitles) && value.recentTitles.length <= 5 &&
+    value.recentTitles.every(title => typeof title === "string" && title.length <= 60);
 }
 
 function startListening() {
   const $ = id => document.getElementById(id);
-  let done = [];
+  let progress = { completed: 0, recentTitles: [] };
   let active = null;
   let answered = false;
-  try { const saved = JSON.parse(localStorage.getItem(LISTENING_KEY) || "[]"); if (validListening(saved)) done = saved; } catch { /* Start fresh. */ }
+  let busy = false;
+  let controller = null;
+  let requestId = 0;
+  try {
+    const saved = JSON.parse(localStorage.getItem(LISTENING_KEY) || "null");
+    if (validListening(saved)) progress = Array.isArray(saved) ? { completed: saved.length, recentTitles: [] } : saved;
+  } catch { /* Start fresh. */ }
   function node(tag, text, className) { const el = document.createElement(tag); el.textContent = text; if (className) el.className = className; return el; }
   function button(text, action, className = "utility-button") { const el = node("button", text, className); el.onclick = action; return el; }
-  function summary() { $("listening-summary").textContent = `已完成 ${done.length} / ${LISTENING.length} 段。选入门、基础或进阶，先听后答。`; }
+  function summary() { $("listening-summary").textContent = `已完成 ${progress.completed} 段。选择入门、基础或进阶，每次联网生成新练习。`; }
   function play(slow = false) {
     if (!("speechSynthesis" in window)) return $("listening-position").textContent = "当前设备无法朗读。";
     speechSynthesis.cancel();
@@ -37,21 +36,52 @@ function startListening() {
   }
   function list() {
     active = null;
-    $("listening-position").textContent = `已完成 ${done.length} / ${LISTENING.length} 段`;
+    $("listening-position").textContent = `累计完成 ${progress.completed} 段`;
     $("listening-actions").replaceChildren();
     const panel = $("listening-content");
-    panel.replaceChildren(node("h2", "选一段来听"), node("p", "每段约 15–30 秒。先听英文，再回答问题；答完可以看字幕和中文。"));
-    ["入门", "基础", "进阶"].forEach(level => {
-      panel.append(node("h3", level));
-      LISTENING.filter(item => item.level === level).forEach(item =>
-        panel.append(button(`${done.includes(item.id) ? "✓ " : ""}${item.title} →`, () => openItem(item), "choice")));
-    });
+    panel.replaceChildren(node("h2", "选择听力阶段"), node("p", "每次生成一段新对话。先听英文并回答问题，再看字幕和中文；生成需要联网和免费 AI 额度。"));
+    ["入门", "基础", "进阶"].forEach(level => panel.append(button(`${level} · 生成新对话 →`, () => generate(level), "choice")));
   }
-  function openItem(item) {
-    active = item;
-    answered = false;
-    $("listening-position").textContent = `${item.level} · ${item.title}`;
-    renderItem();
+  function error(message, level) {
+    $("listening-position").textContent = "生成未完成";
+    const panel = $("listening-content");
+    panel.replaceChildren(node("h2", "这次没生成成功"), node("p", message));
+    $("listening-actions").replaceChildren(button("选择阶段", list, "secondary"), button("再试一次", () => generate(level), "primary"));
+  }
+  async function generate(level) {
+    if (busy) return;
+    let passcode = "";
+    try { passcode = JSON.parse(localStorage.getItem("wordspring-ai-settings-v1") || "{}").passcode || ""; } catch { /* Ask for settings. */ }
+    if (!passcode) {
+      $("listening-position").textContent = "需要访问口令";
+      $("listening-content").replaceChildren(node("h2", "先设置 AI 服务"), node("p", "分级听力使用现有免费 AI 服务。请先填写同一访问口令。"));
+      $("listening-actions").replaceChildren(button("去服务设置", () => {
+        $("listening-close").click(); $("teacher-open").click(); $("ai-edit-settings").click();
+      }, "primary"));
+      return;
+    }
+    busy = true;
+    const current = ++requestId;
+    active = null;
+    $("listening-position").textContent = `${level} · 正在生成`;
+    $("listening-content").replaceChildren(node("h2", "正在生成新对话……"), node("p", "通常需要几秒钟，请保持网络连接。"));
+    $("listening-actions").replaceChildren();
+    controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 45000);
+    try {
+      const response = await fetch(LISTENING_ENDPOINT, { method: "POST",
+        headers: { "content-type": "application/json", "x-wordspring-passcode": passcode },
+        body: JSON.stringify({ level, avoid: progress.recentTitles }), signal: controller.signal });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "服务暂时不可用，请稍后重试。");
+      if (current !== requestId || $("listening-view").hidden) return;
+      active = result;
+      answered = false;
+      $("listening-position").textContent = `${level} · ${result.title}`;
+      renderItem();
+    } catch (cause) {
+      if (current === requestId && !$("listening-view").hidden) error(cause.name === "AbortError" ? "等待超时，请再试一次。" : cause.message || "网络暂时不可用。", level);
+    } finally { clearTimeout(timeout); busy = false; controller = null; }
   }
   function renderItem(choice) {
     const item = active;
@@ -65,26 +95,27 @@ function startListening() {
       item.lines.forEach(line => panel.append(node("div", `${line[0]}：${line[1]}\n${line[2]}`, "dialogue-line")));
     }
     const actions = $("listening-actions");
-    actions.replaceChildren(button("返回列表", list, "secondary"));
-    if (answered) {
-      const next = LISTENING[LISTENING.findIndex(entry => entry.id === item.id) + 1];
-      if (next) actions.append(button("下一段 →", () => openItem(next), "primary"));
-    }
+    actions.replaceChildren(button("选择阶段", list, "secondary"));
+    if (answered) actions.append(button("再生成一段 →", () => generate(item.level), "primary"));
   }
   function answer(number) {
     if (answered) return;
     answered = true;
-    if (!done.includes(active.id)) {
-      done.push(active.id);
-      try { localStorage.setItem(LISTENING_KEY, JSON.stringify(done)); summary(); }
-      catch { done.pop(); $("listening-position").textContent = "听力进度未保存，请检查浏览器存储。"; }
-    }
+    const previous = progress;
+    progress = { completed: progress.completed + 1, recentTitles: [...progress.recentTitles.filter(title => title !== active.title), active.title].slice(-5) };
+    try { localStorage.setItem(LISTENING_KEY, JSON.stringify(progress)); summary(); }
+    catch { progress = previous; $("listening-position").textContent = "听力进度未保存，请检查浏览器存储。"; }
     renderItem(number);
   }
   $("listening-open").onclick = () => { $("listening-view").hidden = false; document.body.style.overflow = "hidden"; list(); };
-  $("listening-close").onclick = () => { if ("speechSynthesis" in window) speechSynthesis.cancel(); $("listening-view").hidden = true; document.body.style.overflow = ""; };
+  $("listening-close").onclick = () => {
+    requestId++;
+    if (controller) controller.abort();
+    if ("speechSynthesis" in window) speechSynthesis.cancel();
+    $("listening-view").hidden = true; document.body.style.overflow = "";
+  };
   summary();
 }
 
-if (typeof module !== "undefined") module.exports = { LISTENING, validListening };
+if (typeof module !== "undefined") module.exports = { validListening };
 if (typeof document !== "undefined") startListening();

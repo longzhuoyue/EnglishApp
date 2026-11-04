@@ -66,10 +66,10 @@
     .choice { display: block; width: 100%; margin: 9px 0; padding: 14px; border: 1px solid #d7ded6; border-radius: 13px; text-align: left; background: white; }
     .feedback { margin: 14px 0; color: #425523; line-height: 1.5; }
   </style>
-  <script src="./notebook.js?v=14" defer></script>
-  <script src="./listening.js?v=14" defer></script>
-  <script src="./ai-chat.js?v=14" defer></script>
-  <script src="./backup.js?v=14" defer></script>
+  <script src="./notebook.js?v=15" defer></script>
+  <script src="./listening.js?v=15" defer></script>
+  <script src="./ai-chat.js?v=15" defer></script>
+  <script src="./backup.js?v=15" defer></script>
 </head>
 <body>
   <main class="shell">
@@ -81,12 +81,8 @@
       <p>不懂就问；也可以用英语聊天，查看建议表达和简短原因。</p>
       <button id="teacher-open">开始学习 →</button>
     </section>
-    <section class="ai-card notebook-card" aria-label="我的错句本">
-      <p class="kicker">纠错后保存 · 定期复习</p><h2>我的错句本</h2>
-      <p id="notebook-summary">正在加载错句</p><button id="notebook-open">打开错句本 →</button>
-    </section>
     <section class="ai-card listening-card" aria-label="分级听力">
-      <p class="kicker">先听后看 · 无需 AI 额度</p><h2>分级听力</h2>
+      <p class="kicker">联网生成 · 先听后看</p><h2>分级听力</h2>
       <p id="listening-summary">正在加载听力练习</p><button id="listening-open">开始听力练习 →</button>
     </section>
     <section class="ai-card roleplay-card" aria-label="任务对话">
@@ -103,6 +99,10 @@
       <p class="kicker">中译英 · 英译中</p><h2>中英翻译</h2>
       <p>输入或录一句话，查看原文与译文，不继续对话。</p>
       <button id="translate-open">开始翻译 →</button>
+    </section>
+    <section class="ai-card notebook-card" aria-label="我的错句本">
+      <p class="kicker">纠错后保存 · 定期复习</p><h2>我的错句本</h2>
+      <p id="notebook-summary">正在加载错句</p><button id="notebook-open">打开错句本 →</button>
     </section>
     <details class="backup"><summary>学习进度备份</summary><div class="backup-content">
       <p>备份包含错句本、听力和任务对话进度。导出后请复制保存；恢复时粘贴备份文本再点击导入。</p>
@@ -155,6 +155,6 @@
       <p class="tip" id="listening-position"></p><div class="lesson-panel" id="listening-content"></div>
       <div class="lesson-footer" id="listening-actions"></div></div>
   </section>
-  <script>if ("serviceWorker" in navigator) navigator.serviceWorker.register("./sw.js?v=14").catch(() => {});</script>
+  <script>if ("serviceWorker" in navigator) navigator.serviceWorker.register("./sw.js?v=15").catch(() => {});</script>
 </body>
 </html>

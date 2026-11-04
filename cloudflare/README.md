@@ -1,12 +1,12 @@
 # 免费 AI 对话服务
 
-本目录是 WordSpring 的 Cloudflare Worker。GitHub Pages 仍托管原网页，Worker 处理 AI 对话、英语老师、任务对话、中英翻译和短录音转文字。对话、提问、翻译内容和录音会发送至 Cloudflare。访问口令保存为 Worker Secret，不写进公开仓库；手机端仅把口令存在本机 Safari 网站数据中，不随学习进度备份导出。
+本目录是 WordSpring 的 Cloudflare Worker。GitHub Pages 仍托管原网页，Worker 处理 AI 对话、英语老师、任务对话、实时分级听力、中英翻译和短录音转文字。对话、提问、翻译内容和录音会发送至 Cloudflare。访问口令保存为 Worker Secret，不写进公开仓库；手机端仅把口令存在本机 Safari 网站数据中，不随学习进度备份导出。
 
 语音识别模型有时返回繁体字。Worker 使用 OpenCC 在返回识别文字前转换为中国大陆简体中文；部署前在本目录运行 `pnpm install` 安装锁定版本的依赖。
 
 ## 免费边界
 
-只使用 **Workers Free** 和 Workers AI 免费额度，不升级 Paid，也不配置付费模型或预付费额度。Cloudflare 当前提供每日 10,000 Neurons 免费额度，超额请求会失败；额度和规则可能调整，部署前应再次核对[官方价格页](https://developers.cloudflare.com/workers-ai/platform/pricing/)。网页会显示“今日免费额度已用完”，不会尝试付费调用。录音识别只是语音转文字，不是发音评测。断网时已缓存的听力和错句复习仍可使用，AI 对话不可用。
+只使用 **Workers Free** 和 Workers AI 免费额度，不升级 Paid，也不配置付费模型或预付费额度。Cloudflare 当前提供每日 10,000 Neurons 免费额度，超额请求会失败；额度和规则可能调整，部署前应再次核对[官方价格页](https://developers.cloudflare.com/workers-ai/platform/pricing/)。网页会显示“今日免费额度已用完”，不会尝试付费调用。录音识别只是语音转文字，不是发音评测。断网时错句复习仍可使用；实时听力和其他 AI 功能需要联网。
 
 ## 部署
 

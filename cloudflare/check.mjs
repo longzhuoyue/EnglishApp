@@ -69,6 +69,23 @@ assert.equal(teachCalls[0].model, "@cf/meta/llama-3.3-70b-instruct-fp8-fast");
 assert.equal(teachCalls[0].input.response_format.type, "json_schema");
 assert.equal(teachCalls[1].input.messages.at(-1).content, "I goed to the store yesterday.");
 assert.equal((await handleRequest(post("/teach", JSON.stringify({ mode: "other", messages: [{ role: "user", content: "hello" }] })), env)).status, 400);
+let listeningCall;
+const listeningEnv = { ...env, AI: { async run(model, input) {
+  listeningCall = { model, input };
+  return { response: { title: "晨间问候", lines: [
+    { speaker: "A", en: "Good morning, Mia.", zh: "早上好，米娅。" },
+    { speaker: "B", en: "Good morning!", zh: "早上好！" },
+    { speaker: "A", en: "How are you?", zh: "你好吗？" }
+  ], question: "他们什么时候见面？", options: ["早上", "晚上", "周末"], answer: 0 } };
+} } };
+const generated = await handleRequest(post("/listening", JSON.stringify({ level: "入门", avoid: ["咖啡店"] })), listeningEnv);
+const generatedBody = await generated.json();
+assert.equal(generatedBody.title, "晨间问候");
+assert.equal(generatedBody.lines.length, 3);
+assert.equal(generatedBody.answer, 0);
+assert.equal(listeningCall.model, "@cf/meta/llama-3.3-70b-instruct-fp8-fast");
+assert.ok(listeningCall.input.messages[0].content.includes("咖啡店"));
+assert.equal((await handleRequest(post("/listening", JSON.stringify({ level: "错误", avoid: [] })), listeningEnv)).status, 400);
 const roleplayEnv = { ...env, AI: { async run() { return { response: { reply: "What size would you like?", hint: "你想要多大杯？", completed: true, feedback: "记得说出杯型。", better: "I'd like a small coffee, please." } }; } } };
 const roleplayBody = turn => JSON.stringify({ scene: "cafe", turn, messages: [{ role: "user", content: "I'd like coffee." }] });
 const roleplayStart = await (await handleRequest(post("/roleplay", roleplayBody(1)), roleplayEnv)).json();
