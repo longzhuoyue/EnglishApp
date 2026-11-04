@@ -1,7 +1,7 @@
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const vm = require("node:vm");
-const { nextInterval, nextReview } = require("./app.js");
+const { nextInterval, nextReview } = require("./notebook.js");
 
 const html = fs.readFileSync("index.html", "utf8");
 const makeElement = () => ({ children: [], style: {}, hidden: false, textContent: "",

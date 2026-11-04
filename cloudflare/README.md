@@ -6,7 +6,7 @@
 
 ## 免费边界
 
-只使用 **Workers Free** 和 Workers AI 免费额度，不升级 Paid，也不配置付费模型或预付费额度。Cloudflare 当前提供每日 10,000 Neurons 免费额度，超额请求会失败；额度和规则可能调整，部署前应再次核对[官方价格页](https://developers.cloudflare.com/workers-ai/platform/pricing/)。网页会显示“今日免费额度已用完”，不会尝试付费调用。录音识别只是语音转文字，不是发音评测。断网时课程仍可按原有方式学习，AI 对话不可用。
+只使用 **Workers Free** 和 Workers AI 免费额度，不升级 Paid，也不配置付费模型或预付费额度。Cloudflare 当前提供每日 10,000 Neurons 免费额度，超额请求会失败；额度和规则可能调整，部署前应再次核对[官方价格页](https://developers.cloudflare.com/workers-ai/platform/pricing/)。网页会显示“今日免费额度已用完”，不会尝试付费调用。录音识别只是语音转文字，不是发音评测。断网时已缓存的听力和错句复习仍可使用，AI 对话不可用。
 
 ## 部署
 

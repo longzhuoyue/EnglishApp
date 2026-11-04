@@ -1,5 +1,16 @@
 const NOTEBOOK_KEY = "wordspring-notebook-v1";
 
+function nextInterval(previous, remembered) {
+  return remembered ? (previous === 0 ? 1 : Math.min(previous * 2 + 1, 30)) : 0;
+}
+
+function nextReview(now, previous, remembered) {
+  if (!remembered) return now + 10 * 60 * 1000;
+  const date = new Date(now);
+  date.setDate(date.getDate() + nextInterval(previous, true));
+  return date.getTime();
+}
+
 function validNotebook(items) {
   return Array.isArray(items) && items.length <= 200 && items.every(item =>
     item && typeof item.id === "string" && typeof item.source === "string" &&
@@ -110,5 +121,5 @@ function startNotebook() {
   window.wordSpringNotebook = { save };
 }
 
-if (typeof module !== "undefined") module.exports = { validNotebook };
+if (typeof module !== "undefined") module.exports = { validNotebook, nextInterval, nextReview };
 if (typeof document !== "undefined") startNotebook();

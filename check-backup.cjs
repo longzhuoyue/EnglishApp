@@ -1,0 +1,42 @@
+const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const vm = require("node:vm");
+const { validNotebook } = require("./notebook.js");
+const { validListening } = require("./listening.js");
+const { validRoleplayProgress } = require("./ai-chat.js");
+
+const html = fs.readFileSync("index.html", "utf8");
+const elements = Object.fromEntries([...html.matchAll(/id="([^"]+)"/g)].map(match => [match[1], { value: "", textContent: "", select() {} }]));
+const data = new Map([["wordspring-notebook-v1", "[]"], ["wordspring-listening-v1", '["a1"]'],
+  ["wordspring-roleplay-v1", "[]"], ["wordspring-course-v1", '{"completed":[1]}']]);
+let reloaded = false;
+const context = vm.createContext({ document: { getElementById: id => elements[id] },
+  localStorage: { getItem: key => data.has(key) ? data.get(key) : null,
+    setItem: (key, value) => data.set(key, value), removeItem: key => data.delete(key) },
+  navigator: { clipboard: { async writeText() {} } }, location: { reload() { reloaded = true; } },
+  confirm: () => true, NOTEBOOK_KEY: "wordspring-notebook-v1", LISTENING_KEY: "wordspring-listening-v1",
+  ROLEPLAY_KEY: "wordspring-roleplay-v1", validNotebook, validListening, validRoleplayProgress });
+vm.runInContext(fs.readFileSync("backup.js", "utf8"), context);
+
+(async () => {
+  await elements["backup-export"].onclick();
+  const exported = JSON.parse(elements["backup-text"].value);
+  assert.equal(exported.format, "wordspring-backup-v2");
+  assert.equal(exported.listening[0], "a1");
+  assert.equal("course" in exported, false);
+  assert.equal("passcode" in exported, false);
+
+  elements["backup-text"].value = JSON.stringify({ format: "wordspring-backup-v1", course: {}, wordReviews: {},
+    notebook: [], listening: ["b1"], roleplay: [] });
+  elements["backup-import"].onclick();
+  assert.equal(reloaded, true);
+  assert.equal(JSON.parse(data.get("wordspring-listening-v1"))[0], "b1");
+  assert.equal(data.has("wordspring-course-v1"), true);
+
+  reloaded = false;
+  elements["backup-text"].value = JSON.stringify({ format: "wordspring-backup-v2", notebook: [], listening: ["bad"], roleplay: [] });
+  elements["backup-import"].onclick();
+  assert.equal(reloaded, false);
+  assert.equal(JSON.parse(data.get("wordspring-listening-v1"))[0], "b1");
+  console.log("WordSpring backup checks passed");
+})().catch(error => { console.error(error); process.exitCode = 1; });

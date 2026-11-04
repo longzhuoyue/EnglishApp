@@ -20,247 +20,116 @@
     .brand { display: flex; align-items: center; justify-content: space-between; font-size: 11px; font-weight: 800; letter-spacing: 2px; }
     .mark { display: grid; place-items: center; width: 48px; height: 48px; border-radius: 15px; background: #c9ef57; font-size: 27px; letter-spacing: 0; }
     h1 { margin: 26px 0 10px; font-size: clamp(31px, 8vw, 38px); line-height: 1.17; letter-spacing: -1px; }
-    .sub { margin: 0; color: #667078; }
-    .stats { display: flex; margin: 29px 0 20px; padding: 23px 0; border-radius: 26px; color: white; background: #14212d; }
-    .stat { flex: 1; text-align: center; }
-    .stat + .stat { border-left: 1px solid #ffffff3d; }
-    .stat strong { display: block; font-size: 29px; }
-    .stat span { display: block; margin-top: 5px; color: #c2c9cc; font-size: 12px; }
-    .start { display: flex; align-items: center; justify-content: space-between; width: 100%; min-height: 104px; padding: 22px; border-radius: 24px; text-align: left; color: #14212d; background: #c9ef57; }
-    .start:disabled { opacity: .65; cursor: default; }
-    .start strong { display: block; font-size: 20px; }
-    .start small { display: block; margin-top: 7px; font-size: 14px; }
-    .start-arrow { display: grid; place-items: center; width: 43px; height: 43px; border-radius: 50%; background: #ffffffad; font-size: 23px; }
-    .section-title { display: flex; justify-content: space-between; align-items: baseline; margin: 31px 0 15px; }
-    .section-title h2 { margin: 0; font-size: 23px; }
-    .section-title span { color: #667078; font-size: 14px; }
-    .word { display: flex; align-items: center; gap: 12px; min-height: 76px; margin-bottom: 9px; padding: 16px; border-radius: 18px; background: white; }
-    .word-name { font-weight: 700; }
-    .word-meaning { margin-top: 4px; color: #667078; font-size: 14px; }
-    .sound { flex: none; margin-left: auto; width: 42px; height: 42px; border-radius: 50%; color: #14212d; background: #f2f5e8; font-size: 19px; }
-    .study { position: fixed; inset: 0; overflow-y: auto; background: #f5f5f0; z-index: 2; }
-    .study[hidden] { display: none; }
-    .study-inner { display: flex; flex-direction: column; max-width: 620px; min-height: 100%; margin: auto; padding: calc(env(safe-area-inset-top) + 24px) 24px calc(env(safe-area-inset-bottom) + 24px); }
-    .study-top { display: flex; justify-content: space-between; align-items: center; font-size: 14px; font-weight: 700; }
-    .close { padding: 8px 0 8px 16px; background: none; color: #14212d; }
-    .progress { height: 5px; margin: 20px 0 28px; border-radius: 4px; background: #dce0dc; overflow: hidden; }
-    .progress > div { height: 100%; background: #14212d; transition: width .2s; }
-    .card { display: flex; flex-direction: column; flex: 1; min-height: 350px; padding: 26px; border-radius: 28px; background: white; }
-    .eyebrow { color: #667078; font-size: 12px; font-weight: 800; letter-spacing: 2px; }
-    .card-head { display: flex; align-items: center; gap: 8px; margin: 18px 0 24px; }
-    .card-head h2 { flex: 1; min-width: 0; margin: 0; font-size: clamp(31px, 9vw, 40px); overflow-wrap: anywhere; }
-    .card-head .sound { background: #c9ef57; }
-    .hint { color: #667078; }
-    .answer { border-top: 1px solid #e6e9e5; padding-top: 19px; }
-    .answer[hidden] { display: none; }
-    .meaning { margin: 0 0 23px; font-size: 23px; font-weight: 700; }
-    .example { margin: 0 0 10px; line-height: 1.5; }
-    .translation { margin: 0; color: #667078; font-size: 14px; line-height: 1.5; }
-    .actions { display: flex; gap: 12px; margin-top: 18px; }
-    .actions[hidden] { display: none; }
-    .actions button { flex: 1; min-height: 56px; border-radius: 18px; font-weight: 700; }
-    .reveal { color: white; background: #14212d; }
-    .again { background: white; }
-    .remember { background: #c9ef57; }
-    .notice { min-height: 20px; margin: 12px 0 0; color: #a13e2b; font-size: 13px; }
-    .course-card { margin: 28px 0 18px; padding: 24px; border-radius: 26px; background: white; }
-    .kicker { margin: 0 0 12px; color: #637071; font-size: 12px; font-weight: 800; letter-spacing: 1.5px; }
-    .course-card h2 { margin: 0 0 8px; font-size: 25px; }
-    .course-card p { color: #657076; line-height: 1.5; }
-    .speaking-card { margin: 18px 0; padding: 24px; border-radius: 26px; color: white; background: #213c4b; }
-    .speaking-card h2 { margin: 0 0 8px; font-size: 24px; }
-    .speaking-card p { color: #d0dde1; line-height: 1.5; }
-    .speaking-card .kicker { color: #c9ef57; }
-    .speaking-card button { width: 100%; min-height: 50px; border-radius: 14px; color: #14212d; background: #c9ef57; font-weight: 750; }
-    .speaking-card button:disabled { opacity: .6; }
-    .speaking-card button + button { margin-top: 9px; background: white; }
-    .speaking-card button[hidden], #speaking-again[hidden] { display: none; }
+    .sub { margin: 0 0 28px; color: #667078; line-height: 1.5; }
     .ai-card { margin: 18px 0; padding: 24px; border-radius: 26px; background: #e9efd7; }
     .teacher-card { background: #e5f0ef; }
-    .listening-card { background: #f0e8dc; }
     .notebook-card { background: #e8e8f5; }
+    .listening-card { background: #f0e8dc; }
     .roleplay-card { background: #dcecf3; }
+    .kicker { margin: 0 0 12px; color: #637071; font-size: 12px; font-weight: 800; letter-spacing: 1.5px; }
     .ai-card h2 { margin: 0 0 8px; font-size: 24px; }
     .ai-card p { color: #4c615d; line-height: 1.5; }
     .ai-card button { width: 100%; min-height: 50px; border-radius: 14px; background: #14212d; color: white; font-weight: 750; }
-    .ai-settings { padding: 16px; margin: 12px 0; border-radius: 16px; background: white; }
-    .ai-settings[hidden] { display: none; }
-    .ai-settings label { display: block; margin: 12px 0; font-weight: 700; }
-    .ai-settings input { display: block; width: 100%; margin-top: 6px; padding: 12px; border: 1px solid #cbd3cc; border-radius: 10px; font: inherit; }
-    .ai-settings button, .ai-tools button { min-height: 44px; padding: 10px 14px; border-radius: 12px; }
-    .ai-history { flex: 1; margin: 12px 0; }
-    .ai-line { margin: 10px 0; padding: 14px; border-radius: 16px; background: white; }
-    .ai-line.user { margin-left: 28px; background: #e9efd7; }
-    .ai-line p { margin: 7px 0; white-space: pre-wrap; line-height: 1.5; }
-    .ai-tools { display: flex; gap: 8px; margin-top: 10px; }
-    .ai-tools button { flex: 1; }
-    .ai-input { width: 100%; min-height: 78px; padding: 12px; border: 1px solid #cbd3cc; border-radius: 12px; font: inherit; resize: vertical; }
-    .speaking-scenes { margin: 14px 0; border-radius: 20px; background: white; }
-    .speaking-scenes summary { padding: 19px; font-weight: 750; cursor: pointer; }
-    .speaking-scenes .day-row small { line-height: 1.4; }
-    .speaking-prompt { padding: 18px; border-radius: 18px; background: #edf2e7; }
-    .speaking-prompt strong { display: block; font-size: 23px; line-height: 1.35; }
-    .speaking-target { margin: 22px 0; font-size: 24px; line-height: 1.35; }
-    .speaking-target small { display: block; margin-top: 8px; font-size: 15px; font-weight: 400; color: #667078; }
-    .speaking-tools { display: flex; flex-wrap: wrap; gap: 9px; margin: 20px 0 8px; }
-    .speaking-tools button { min-height: 44px; }
-    .speaking-feedback { min-height: 45px; padding: 12px; border-radius: 12px; background: #f4f6ee; line-height: 1.5; }
-    .course-button, .primary, .secondary { min-height: 52px; border-radius: 16px; font-weight: 700; }
-    .course-button, .primary { color: #14212d; background: #c9ef57; }
-    .course-button { width: 100%; margin-top: 8px; }
-    .primary:disabled { opacity: .45; cursor: default; }
-    .secondary { background: #eef0ea; color: #14212d; }
-    .course-outline, .extra, .backup { margin: 14px 0; border-radius: 20px; background: white; }
-    .course-outline summary, .extra summary, .backup summary { padding: 19px; font-weight: 750; cursor: pointer; }
-    .day-list { padding: 0 12px 12px; }
-    .day-row { display: flex; align-items: center; gap: 12px; width: 100%; padding: 14px; margin: 5px 0; border-radius: 14px; text-align: left; color: #14212d; background: #f5f5f0; }
-    .day-number { display: grid; place-items: center; flex: none; width: 38px; height: 38px; border-radius: 12px; background: #e6f7ae; font-weight: 800; }
-    .day-row strong, .day-row small { display: block; }
-    .day-row small { margin-top: 3px; color: #687278; }
-    .day-check { margin-left: auto; color: #4e6f13; font-weight: 800; }
-    .course-review { display: flex; align-items: center; gap: 14px; margin-bottom: 18px; padding: 18px; border-radius: 18px; background: #e9efd7; }
-    .course-review[hidden] { display: none; }
-    .course-review div { flex: 1; }
-    .course-review strong, .course-review span { display: block; }
-    .course-review span { margin-top: 4px; color: #607061; font-size: 13px; }
-    .course-review button { padding: 12px 16px; border-radius: 12px; background: #c9ef57; font-weight: 700; }
-    .small-heading { margin: 30px 0 10px; font-size: 20px; }
-    .extra-content, .backup-content { padding: 0 16px 16px; }
-    .backup-content p { color: #667078; font-size: 14px; line-height: 1.5; }
+    .backup { margin: 24px 0; border-radius: 20px; background: white; }
+    .backup summary { padding: 19px; font-weight: 750; cursor: pointer; }
+    .backup-content { padding: 0 16px 16px; }
+    .backup-content p, .tip { color: #667078; font-size: 14px; line-height: 1.5; }
     .backup-content textarea, .write-box { width: 100%; min-height: 110px; padding: 12px; border: 1px solid #cbd3cc; border-radius: 12px; font: inherit; resize: vertical; }
-    .backup-actions { display: flex; gap: 10px; margin-top: 10px; }
-    .backup-actions button { flex: 1; padding: 12px; border-radius: 12px; background: #eef0ea; }
+    .select { min-height: 48px; height: 48px; }
+    .backup-actions, .ai-tools, .lesson-footer { display: flex; gap: 10px; margin-top: 10px; }
+    .backup-actions button, .ai-tools button, .lesson-footer button { flex: 1; min-height: 44px; padding: 10px 14px; border-radius: 12px; }
+    .backup-actions button, .secondary { background: #eef0ea; color: #14212d; }
+    .primary { background: #c9ef57; color: #14212d; font-weight: 700; }
+    .primary:disabled { opacity: .45; cursor: default; }
+    .utility-button { padding: 10px 14px; border-radius: 12px; background: #eef2e5; color: #14212d; }
+    .utility-button + .utility-button { margin-left: 8px; }
     .overlay { position: fixed; inset: 0; z-index: 3; overflow-y: auto; background: #f5f5f0; }
-    .overlay[hidden] { display: none; }
+    .overlay[hidden], .ai-settings[hidden] { display: none; }
     .overlay-inner { display: flex; flex-direction: column; max-width: 620px; min-height: 100%; margin: auto; padding: calc(env(safe-area-inset-top) + 20px) 20px calc(env(safe-area-inset-bottom) + 20px); }
     .overlay-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
     .overlay-top strong { font-size: 16px; }
     .overlay-top button { padding: 10px; background: none; color: #14212d; }
-    .lesson-progress { margin: 14px 0 18px; color: #667078; font-size: 13px; }
+    .ai-settings { padding: 16px; margin: 12px 0; border-radius: 16px; background: white; }
+    .ai-settings label { display: block; margin: 12px 0; font-weight: 700; }
+    .ai-settings input { display: block; width: 100%; margin-top: 6px; padding: 12px; border: 1px solid #cbd3cc; border-radius: 10px; font: inherit; }
+    .ai-history { flex: 1; margin: 12px 0; }
+    .ai-line { margin: 10px 0; padding: 14px; border-radius: 16px; background: white; }
+    .ai-line.user { margin-left: 28px; background: #e9efd7; }
+    .ai-line p { margin: 7px 0; white-space: pre-wrap; line-height: 1.5; }
+    .ai-input { width: 100%; min-height: 78px; padding: 12px; border: 1px solid #cbd3cc; border-radius: 12px; font: inherit; resize: vertical; }
     .lesson-panel { flex: 1; padding: 22px; border-radius: 24px; background: white; }
     .lesson-panel h2 { margin: 0 0 12px; font-size: 27px; }
     .lesson-panel h3 { margin: 24px 0 10px; font-size: 18px; }
     .lesson-panel p { line-height: 1.55; }
-    .learning-row { display: flex; align-items: center; gap: 10px; padding: 12px 0; border-bottom: 1px solid #eef0ec; }
-    .learning-row div { flex: 1; }
-    .learning-row strong, .learning-row small { display: block; }
-    .learning-row small { margin-top: 5px; color: #667078; }
     .dialogue-line { margin: 13px 0; padding: 13px; border-radius: 14px; background: #f5f5f0; white-space: pre-wrap; }
-    .dialogue-line b { color: #607020; }
     .dialogue-line small { display: block; margin-top: 6px; color: #667078; }
     .choice { display: block; width: 100%; margin: 9px 0; padding: 14px; border: 1px solid #d7ded6; border-radius: 13px; text-align: left; background: white; }
-    .choice.selected { border-color: #66852c; background: #eef8d9; }
     .feedback { margin: 14px 0; color: #425523; line-height: 1.5; }
-    .lesson-footer { display: flex; gap: 10px; margin-top: 16px; }
-    .lesson-footer[hidden] { display: none; }
-    .lesson-footer button { flex: 1; }
-    .utility-button { padding: 10px 14px; border-radius: 12px; background: #eef2e5; color: #14212d; }
-    .utility-button + .utility-button { margin-left: 8px; }
-    .tip { color: #667078; font-size: 14px; }
-    .done-mark { display: grid; place-items: center; width: 64px; height: 64px; margin: 12px 0 22px; border-radius: 20px; background: #c9ef57; font-size: 32px; }
-    audio { width: 100%; margin-top: 14px; }
   </style>
-  <script src="./app.js?v=13" defer></script>
-  <script src="./course.js?v=13" defer></script>
-  <script src="./speaking.js?v=6" defer></script>
-  <script src="./notebook.js?v=13" defer></script>
-  <script src="./listening.js?v=13" defer></script>
-  <script src="./ai-chat.js?v=13" defer></script>
+  <script src="./notebook.js?v=14" defer></script>
+  <script src="./listening.js?v=14" defer></script>
+  <script src="./ai-chat.js?v=14" defer></script>
+  <script src="./backup.js?v=14" defer></script>
 </head>
 <body>
   <main class="shell">
     <div class="brand"><span class="mark" aria-hidden="true">✦</span><span>WORDSPRING</span></div>
     <h1>每天一点，<br>英语更近一点。</h1>
-    <p class="sub">每天 30 分钟，从一句话开始。</p>
-    <section class="course-card" aria-label="今日课程">
-      <p class="kicker">零基础 · 七天试学</p>
-      <h2 id="course-title">正在加载课程</h2>
-      <p id="course-detail">请稍候</p>
-      <button class="course-button" id="course-start" disabled>开始课程 →</button>
-    </section>
-    <section class="speaking-card" aria-label="口语专项">
-      <p class="kicker">口语专项 · 随时练</p>
-      <h2>开口说英语</h2>
-      <p id="speaking-summary">正在加载练习</p>
-      <button id="speaking-start" disabled>开始口语练习 →</button>
-      <button id="speaking-difficult-start" hidden>先练难句</button>
-    </section>
-    <details class="speaking-scenes"><summary>选择口语场景</summary><div class="day-list" id="speaking-scenes"></div></details>
-    <section class="ai-card" aria-label="AI 自由对话">
-      <p class="kicker">免费额度 · 需要联网</p>
-      <h2>AI 自由对话</h2>
-      <p>打字或录一句话，和 AI 练日常英语。回复可朗读；语音转文字只识别内容，不评发音。</p>
-      <button id="ai-open">开始自由对话 →</button>
-    </section>
+    <p class="sub">每天 30 分钟，听一段、说一句、解决一个问题。</p>
     <section class="ai-card teacher-card" aria-label="AI 英语老师">
-      <p class="kicker">提问解答 · 对话纠错</p>
-      <h2>AI 英语老师</h2>
-      <p>不懂就问；也可以用英语聊天，查看建议改法、简短原因和英文回应。</p>
+      <p class="kicker">提问解答 · 对话纠错</p><h2>AI 英语老师</h2>
+      <p>不懂就问；也可以用英语聊天，查看建议表达和简短原因。</p>
       <button id="teacher-open">开始学习 →</button>
     </section>
     <section class="ai-card notebook-card" aria-label="我的错句本">
       <p class="kicker">纠错后保存 · 定期复习</p><h2>我的错句本</h2>
-      <p id="notebook-summary">保存英语老师的建议表达，之后自己回想、朗读并复习。</p>
-      <button id="notebook-open">打开错句本 →</button>
+      <p id="notebook-summary">正在加载错句</p><button id="notebook-open">打开错句本 →</button>
     </section>
     <section class="ai-card listening-card" aria-label="分级听力">
       <p class="kicker">先听后看 · 无需 AI 额度</p><h2>分级听力</h2>
-      <p id="listening-summary">从短对话开始，听完回答问题，再看字幕和译文。</p>
-      <button id="listening-open">开始听力练习 →</button>
+      <p id="listening-summary">正在加载听力练习</p><button id="listening-open">开始听力练习 →</button>
     </section>
     <section class="ai-card roleplay-card" aria-label="任务对话">
       <p class="kicker">有目标的交流 · 需要联网</p><h2>任务对话</h2>
-      <p>选一个生活任务，和 AI 对话 3–5 轮，完成后获得一句改进建议。</p>
-      <p id="roleplay-summary"></p>
-      <button id="roleplay-open">选择任务 →</button>
+      <p>选一个生活任务，和 AI 对话 3–5 轮，结束后获得一句改进建议。</p>
+      <p id="roleplay-summary"></p><button id="roleplay-open">选择任务 →</button>
+    </section>
+    <section class="ai-card" aria-label="AI 自由对话">
+      <p class="kicker">随时聊天 · 需要联网</p><h2>AI 自由对话</h2>
+      <p>打字或录一句话，练习日常交流；回复可朗读，录音只转文字。</p>
+      <button id="ai-open">开始自由对话 →</button>
     </section>
     <section class="ai-card" aria-label="中英翻译">
-      <p class="kicker">免费额度 · 需要联网</p>
-      <h2>中英翻译</h2>
-      <p>输入或录一句话，选择中译英或英译中，只返回译文，不继续对话。</p>
+      <p class="kicker">中译英 · 英译中</p><h2>中英翻译</h2>
+      <p>输入或录一句话，查看原文与译文，不继续对话。</p>
       <button id="translate-open">开始翻译 →</button>
     </section>
-    <div class="course-review" id="course-review" hidden><div><strong id="course-review-count">0 句待复习</strong><span>把学过的表达再说一遍</span></div><button id="course-review-start">开始复习</button></div>
-    <details class="course-outline"><summary>查看七天课程</summary><div class="day-list" id="course-days"></div></details>
-    <h2 class="small-heading">拓展词库</h2>
-    <p class="sub">原来的 20 个单词和学习进度仍在这里。</p>
-    <div class="stats" aria-label="学习进度">
-      <div class="stat"><strong id="due-count">–</strong><span>待复习</span></div>
-      <div class="stat"><strong id="today-count">–</strong><span>今日已学</span></div>
-      <div class="stat"><strong id="total-count">–</strong><span>累计学习</span></div>
-    </div>
-    <button class="start" id="start" disabled><span><strong id="start-title">正在加载</strong><small id="start-detail">请稍候</small></span><span class="start-arrow" aria-hidden="true">→</span></button>
-    <details class="extra"><summary>查看拓展词库 <span id="library-count"></span></summary><div class="extra-content" id="library"></div></details>
-    <details class="backup"><summary>学习进度备份</summary><div class="backup-content"><p>备份包含课程、口语、词库、错句本、听力和任务对话进度。点击导出后可复制文本保存；恢复时粘贴备份文本再点击导入。</p><textarea id="backup-text" aria-label="进度备份文本"></textarea><div class="backup-actions"><button id="backup-export">导出并复制</button><button id="backup-import">导入备份</button></div><p id="backup-message" role="status"></p></div></details>
+    <details class="backup"><summary>学习进度备份</summary><div class="backup-content">
+      <p>备份包含错句本、听力和任务对话进度。导出后请复制保存；恢复时粘贴备份文本再点击导入。</p>
+      <textarea id="backup-text" aria-label="进度备份文本"></textarea>
+      <div class="backup-actions"><button id="backup-export">导出并复制</button><button id="backup-import">导入备份</button></div>
+      <p id="backup-message" role="status"></p>
+    </div></details>
   </main>
-
-  <section class="overlay" id="speaking-view" aria-label="口语练习" hidden>
-    <div class="overlay-inner">
-      <div class="overlay-top"><strong id="speaking-title"></strong><button id="speaking-close">关闭</button></div>
-      <div class="lesson-progress" id="speaking-position"></div>
-      <div class="lesson-panel" id="speaking-content"></div>
-      <div class="lesson-footer"><button class="secondary" id="speaking-again">还不熟</button><button class="primary" id="speaking-next">说出来了 →</button></div>
-    </div>
-  </section>
 
   <section class="overlay" id="ai-view" aria-label="AI 自由对话" hidden>
     <div class="overlay-inner">
       <div class="overlay-top"><strong id="ai-title">AI 自由对话</strong><button id="ai-close">关闭</button></div>
-      <p class="tip">需要联网和 Cloudflare 免费账号。每日免费额度用完后，次日再练；录音会发送到 Cloudflare 识别。</p>
+      <p class="tip">AI 功能需要联网和 Cloudflare 免费额度；录音会发送到 Cloudflare 识别。</p>
       <button class="utility-button" id="ai-edit-settings">服务设置</button>
       <div class="ai-settings" id="ai-settings" hidden>
         <label>访问口令<input id="ai-passcode" type="password" autocomplete="off"></label>
         <button class="primary" id="ai-save-settings">保存设置</button>
       </div>
       <div id="ai-topic-section"><label for="ai-topic">练习场景</label>
-      <select id="ai-topic" class="write-box" style="min-height:48px;height:48px"><option>日常交流</option><option>点餐</option><option>问路</option><option>自由聊天</option></select></div>
+        <select id="ai-topic" class="write-box select"><option>日常交流</option><option>点餐</option><option>问路</option><option>自由聊天</option></select></div>
       <div id="translation-controls" hidden><label for="translate-direction">翻译方向</label>
-      <select id="translate-direction" class="write-box" style="min-height:48px;height:48px"><option value="zh-en">中文 → 英文</option><option value="en-zh">英文 → 中文</option></select></div>
+        <select id="translate-direction" class="write-box select"><option value="zh-en">中文 → 英文</option><option value="en-zh">英文 → 中文</option></select></div>
       <div id="teacher-controls" hidden><label for="teacher-mode">学习方式</label>
-      <select id="teacher-mode" class="write-box" style="min-height:48px;height:48px"><option value="ask">问老师</option><option value="correct">纠错对话</option></select>
-      <p class="tip" id="teacher-help">可以用中文或英文提问，继续追问也可以。</p></div>
+        <select id="teacher-mode" class="write-box select"><option value="ask">问老师</option><option value="correct">纠错对话</option></select>
+        <p class="tip" id="teacher-help">可以用中文或英文提问，继续追问也可以。</p></div>
       <div id="roleplay-controls" hidden><label for="roleplay-scene">本次任务</label>
-        <select id="roleplay-scene" class="write-box" style="min-height:48px;height:48px"><option value="cafe">咖啡店：点饮料并确认价格</option><option value="directions">问路：找到图书馆并确认方向</option><option value="shop">商店：买东西并询问尺码</option><option value="hotel">酒店：办理入住并询问早餐</option></select>
+        <select id="roleplay-scene" class="write-box select"><option value="cafe">咖啡店：点饮料并确认价格</option><option value="directions">问路：找到图书馆并确认方向</option><option value="shop">商店：买东西并询问尺码</option><option value="hotel">酒店：办理入住并询问早餐</option></select>
         <p class="tip" id="roleplay-goal"></p><p class="tip" id="roleplay-turns"></p>
         <button class="utility-button" id="roleplay-restart">重新开始此任务</button></div>
       <div class="ai-history" id="ai-history" aria-live="polite"></div>
@@ -286,44 +155,6 @@
       <p class="tip" id="listening-position"></p><div class="lesson-panel" id="listening-content"></div>
       <div class="lesson-footer" id="listening-actions"></div></div>
   </section>
-
-  <section class="overlay" id="lesson-view" aria-label="课程学习" hidden>
-    <div class="overlay-inner">
-      <div class="overlay-top"><strong id="lesson-title"></strong><button id="lesson-close">关闭</button></div>
-      <div class="lesson-progress" id="lesson-progress"></div>
-      <div class="lesson-panel" id="lesson-content"></div>
-      <div class="lesson-footer"><button class="primary" id="lesson-next">继续</button></div>
-    </div>
-  </section>
-
-  <section class="overlay" id="phrase-view" aria-label="句子复习" hidden>
-    <div class="overlay-inner">
-      <div class="overlay-top"><strong>句子复习</strong><button id="phrase-close">关闭</button></div>
-      <div class="lesson-progress" id="phrase-position"></div>
-      <div class="lesson-panel"><p class="kicker">先自己想一想意思</p><h2 id="phrase-english"></h2><button class="utility-button" id="phrase-speak">♪ 播放</button><p id="phrase-chinese" hidden></p></div>
-      <div class="lesson-footer" id="phrase-reveal-actions"><button class="primary" id="phrase-reveal">查看答案</button></div>
-      <div class="lesson-footer" id="phrase-rate-actions" hidden><button class="secondary" id="phrase-again">再学一次</button><button class="primary" id="phrase-remember">记住了</button></div>
-    </div>
-  </section>
-
-  <section class="study" id="study" aria-label="单词复习" hidden>
-    <div class="study-inner">
-      <div class="study-top"><span id="position"></span><button class="close" id="close">关闭</button></div>
-      <div class="progress"><div id="progress-bar"></div></div>
-      <div class="card">
-        <span class="eyebrow">今日单词</span>
-        <div class="card-head"><h2 id="english"></h2><button class="sound" id="speak-current" aria-label="朗读单词">♪</button></div>
-        <p class="hint" id="hint">先想一想它的意思，再查看答案。</p>
-        <div class="answer" id="answer" hidden>
-          <p class="meaning" id="chinese"></p>
-          <p class="example" id="example"></p>
-          <p class="translation" id="translation"></p>
-        </div>
-      </div>
-      <div class="actions" id="reveal-actions"><button class="reveal" id="reveal">查看答案</button></div>
-      <div class="actions" id="rate-actions" hidden><button class="again" id="again">↶ 再学一次</button><button class="remember" id="remember">✓ 记住了</button></div>
-      <p class="notice" id="notice" role="status"></p>
-    </div>
-  </section>
+  <script>if ("serviceWorker" in navigator) navigator.serviceWorker.register("./sw.js?v=14").catch(() => {});</script>
 </body>
 </html>
