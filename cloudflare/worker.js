@@ -32,12 +32,16 @@ const GRAMMAR_TASKS = [
   "Put ___ immediately before a simple singular noun. Options must include a and an. Use clear words like apple, egg, orange, book, bag, or car.",
   "Put ___ after a number such as two, three, or four, and test the PLURAL form of a noun. Do not test verbs.",
   "Start each question with There ___, and test is versus are according to the following noun phrase.",
-  "Test am/is/are + an -ing ACTION verb. Put ___ in the be-verb position or in the -ing verb position.",
+  "Use only pronoun subjects I/you/we/they/he/she/it. Put ___ AFTER the subject and BEFORE an -ing ACTION verb. The three options must be am, is, and are; the answer must agree with the subject. Never blank the subject.",
   "Test only REGULAR past affirmative ACTION verbs from walk/walked, play/played, watch/watched, clean/cleaned, cook/cooked, open/opened. Use yesterday or last night. The correct option must be one of walked/played/watched/cleaned/cooked/opened. NEVER include do/did, go/went, eat/ate, or see/saw in questions or options. Example: prompt='She ___ TV yesterday.', options=['watch','watched','watching'], answer=1.",
-  "Test IRREGULAR past verbs only from go/went, see/saw, eat/ate, take/took, come/came, have/had. Include yesterday or last night. Never invent irregular forms."
+  "At least TWO questions must test irregular past verbs from go/went, see/saw, eat/ate, take/took, come/came, have/had, do/did, buy/bought. The third may contrast one regular past verb. Every question must include yesterday, last night, or last weekend. Never invent irregular forms."
 ];
 
 const KNOWLEDGE_SCENES = ["打招呼", "自我介绍", "咖啡店", "餐厅", "问路", "购物", "乘车", "酒店", "天气", "周末计划", "兴趣爱好", "寻求帮助"];
+const BE_FOR_PRONOUN = { i: "am", you: "are", we: "are", they: "are", he: "is", she: "is", it: "is" };
+const REGULAR_PAST = ["walked", "played", "watched", "cleaned", "cooked", "opened", "washed", "brushed",
+  "worked", "liked", "visited", "helped", "asked", "called", "started"];
+const IRREGULAR_PAST = ["went", "saw", "ate", "had", "took", "came", "did", "bought", "gave", "found", "made", "wrote", "ran"];
 function canVerbForms(verb) {
   if (typeof verb !== "string" || !/^[a-z]{2,20}$/.test(verb) ||
       ["can", "cannot", "is", "are", "was", "were"].includes(verb)) return null;
@@ -90,13 +94,15 @@ function grammarQuestionMatches(topic, item) {
     (/s$/.test(selected) || ["children", "people", "men", "women"].includes(selected));
   if (topic === 8) return /^There\s+___/i.test(prompt) && options.includes("is") && options.includes("are") &&
     ["is", "are"].includes(selected);
-  if (topic === 9) return (/\b(am|is|are)\s+___/i.test(prompt) && selected.endsWith("ing")) ||
-    (/___\s+\w+ing\b/i.test(prompt) && ["am", "is", "are"].includes(selected));
-  if (topic === 10) return /\b(yesterday|last|ago)\b/i.test(prompt) &&
-    ["walked", "played", "watched", "cleaned", "cooked", "opened", "washed", "brushed",
-      "worked", "liked", "visited", "helped", "asked", "called", "started"].includes(selected);
+  if (topic === 9) {
+    const pronoun = prompt.match(/^(?:(I|you|we|they|he|she|it)\s+___|___\s+(I|you|we|they|he|she|it))\s+\w+ing\b/i);
+    if (pronoun) return selected === BE_FOR_PRONOUN[(pronoun[1] || pronoun[2]).toLowerCase()];
+    return (/\b(am|is|are)\s+___/i.test(prompt) && selected.endsWith("ing")) ||
+      (/___\s+\w+ing\b/i.test(prompt) && ["am", "is", "are"].includes(selected));
+  }
+  if (topic === 10) return /\b(yesterday|last|ago)\b/i.test(prompt) && REGULAR_PAST.includes(selected);
   return /\b(yesterday|last|ago)\b/i.test(prompt) &&
-    ["went", "saw", "ate", "had", "took", "came", "bought", "gave", "found", "made", "wrote", "ran"].includes(selected);
+    (IRREGULAR_PAST.includes(selected) || REGULAR_PAST.includes(selected));
 }
 
 function validGeneratedKnowledge(mode, output, avoidWords, topic) {
@@ -123,7 +129,8 @@ function validGeneratedKnowledge(mode, output, avoidWords, topic) {
           (item.prompt.match(/___/g) || []).length !== 1 || /[\u3400-\u9fff()]/.test(item.prompt) ||
           !item.options.every(option => /^[A-Za-z]+(?:'[A-Za-z]+)?$/.test(option))) return false;
       return grammarQuestionMatches(topic, item);
-    }) && new Set(output.questions.map(item => item.prompt.toLowerCase().trim())).size === 3;
+    }) && new Set(output.questions.map(item => item.prompt.toLowerCase().trim())).size === 3 &&
+    (topic !== 11 || output.questions.filter(item => IRREGULAR_PAST.includes(item.options[item.answer].toLowerCase())).length >= 2);
   if (mode === "translate") return Array.isArray(output.items) && output.items.length === 3 &&
     output.items.every(item => item && chinese(item.zh, 100) && !/[A-Za-z]/.test(item.zh) &&
       english(item.reference, 160) && chinese(item.hint, 120)) &&
@@ -139,7 +146,46 @@ function validGeneratedKnowledge(mode, output, avoidWords, topic) {
       item.options.every(option => english(option, 100)));
 }
 
-async function generateKnowledge(input, env) {
+function grammarPack(topic, output) {
+  const [title, rule] = GRAMMAR_TOPICS[topic];
+  return { mode: "grammar", title, rule,
+    examples: output.examples.map(item => ({ en: item.en.trim(), zh: simplify(item.zh.trim()) })),
+    questions: output.questions.map(item => ({ prompt: item.prompt.trim(), options: item.options.map(option => option.trim()),
+      answer: item.answer, explanation: rule })) };
+}
+
+function beQuestionsFromExamples(examples) {
+  if (!Array.isArray(examples)) return [];
+  const questions = [];
+  for (const item of examples) {
+    const match = typeof item?.en === "string" && item.en.match(/^(I|you|we|they|he|she|it)\s+(am|is|are)(\b.*)$/i);
+    if (!match || BE_FOR_PRONOUN[match[1].toLowerCase()] !== match[2].toLowerCase()) continue;
+    const subjects = [match[1]];
+    const alternate = ({ i: "You", he: "She", she: "He" })[match[1].toLowerCase()];
+    if (alternate) subjects.push(alternate);
+    for (const subject of subjects) questions.push({ prompt: `${subject} ___${match[3]}`,
+      options: ["am", "is", "are"], answer: ["am", "is", "are"].indexOf(BE_FOR_PRONOUN[subject.toLowerCase()]),
+      explanation: GRAMMAR_TOPICS[0][1] });
+  }
+  return questions;
+}
+
+function mergeGrammar(topic, outputs) {
+  const candidates = outputs.filter(Boolean);
+  const questions = candidates.flatMap(output => [...(Array.isArray(output.questions) ? output.questions : []),
+    ...(topic === 0 ? beQuestionsFromExamples(output.examples) : [])]);
+  for (const source of candidates) {
+    for (let first = 0; first < questions.length - 2; first++)
+      for (let second = first + 1; second < questions.length - 1; second++)
+        for (let third = second + 1; third < questions.length; third++) {
+          const output = { examples: source.examples, questions: [questions[first], questions[second], questions[third]] };
+          if (validGeneratedKnowledge("grammar", output, [], topic)) return grammarPack(topic, output);
+        }
+  }
+  return null;
+}
+
+async function generateKnowledge(input, env, retry = false) {
   const mode = input.mode;
   const scene = KNOWLEDGE_SCENES[input.sequence % KNOWLEDGE_SCENES.length];
   const [title, rule] = mode === "grammar" ? GRAMMAR_TOPICS[input.topic] : [scene, ""];
@@ -151,7 +197,7 @@ async function generateKnowledge(input, env) {
   };
   const result = await env.AI.run(KNOWLEDGE_MODEL, {
     messages: [{ role: "system", content: `You create accurate beginner English lessons. Chinese fields must use natural Simplified Chinese only; English fields must use natural beginner English only. Return only the requested JSON fields. ${instructions[mode]}` },
-      { role: "user", content: mode === "grammar" ? `请生成第 ${input.sequence + 1} 组语法练习。questions.prompt 必须是完整英文句子，含三个下划线 ___，每题只考当前语法点。${input.topic === 5 ? "这组三道题的空格一律放在 can 或 can't 后面，选项只填动作动词原形、第三人称形式和 ing 形式，绝不能把 can、can't、do 或 doesn't 放进选项。" : ""}例句译文和解释用简体中文。` :
+      { role: "user", content: mode === "grammar" ? `请生成第 ${input.sequence + 1} 组语法练习。questions.prompt 必须是完整英文句子，含三个下划线 ___，每题只考当前语法点。${input.topic === 0 ? "三道题的空格只能放在主语后面，选项只能是 am、is、are，绝不能把主语挖空。" : ""}${input.topic === 5 ? "这组三道题的空格一律放在 can 或 can't 后面，选项只填动作动词原形、第三人称形式和 ing 形式，绝不能把 can、can't、do 或 doesn't 放进选项。" : ""}${input.topic === 9 ? "现在进行时的三题只能挖空 am、is、are，不能挖空主语。" : ""}${input.topic === 11 ? "两个例句必须是完整英文句子，绝不能含下划线；每题必须有 yesterday、last night 或 last weekend。" : ""}${retry && input.topic === 11 ? "上一次未通过校验。这次三题正确答案必须全部是不规则过去式：went、saw、ate、took、came、had、did、bought 中任选三个；不得选 visited、finished 等规则过去式，且每个题目只能有一个 ___。" : ""}例句译文和解释用简体中文。` :
         `请生成第 ${input.sequence + 1} 组全新的练习。题目、提示和解释请使用简体中文；英文只放在英文句子、选项和单词字段中。` }],
     response_format: { type: "json_schema", json_schema: KNOWLEDGE_SCHEMAS[mode] },
     chat_template_kwargs: { enable_thinking: false },
@@ -161,15 +207,59 @@ async function generateKnowledge(input, env) {
   let output = result.choices?.[0]?.message?.content;
   if (typeof output === "string") { try { output = JSON.parse(output); } catch { return null; } }
   if (!output) return null;
+  if (mode === "grammar" && input.topic === 0 && Array.isArray(output.questions)) {
+    output.questions.forEach(item => {
+      if (!item || typeof item.prompt !== "string" || !Array.isArray(item.options) ||
+          !item.options.every(option => typeof option === "string")) return;
+      const match = item.prompt.match(/^___\s+(?:(am|is|are)\s+)?(.+)$/i);
+      const chosen = item.options[item.answer]?.trim();
+      const part = chosen?.match(/^(I|you|we|they|he|she|it)(?:\s+(am|is|are))?$/i);
+      const expected = BE_FOR_PRONOUN[part?.[1]?.toLowerCase()];
+      if (!match || !expected || (match[1] && match[1].toLowerCase() !== expected) ||
+          (part[2] && part[2].toLowerCase() !== expected) ||
+          (["we", "they"].includes(part[1].toLowerCase()) && /^an?\s+/i.test(match[2]))) return;
+      item.prompt = `${part[1].toLowerCase() === "i" ? "I" : part[1]} ___ ${match[2]}`;
+      item.options = ["am", "is", "are"];
+      item.answer = item.options.indexOf(expected);
+    });
+  }
   if (mode === "grammar" && [10, 11].includes(input.topic) && Array.isArray(output.questions)) {
     output.questions.forEach(item => {
+      if (typeof item?.prompt === "string" && (item.prompt.match(/___/g) || []).length === 2)
+        item.prompt = item.prompt.replace(/\s+___(?=\s+(?:yesterday|last\b))/i, "");
+      if (typeof item?.prompt === "string") item.prompt = item.prompt.replace(/\bthis morning\b/gi, "yesterday morning");
       if (typeof item?.prompt === "string" && !/\b(yesterday|last|ago|tomorrow|next|today|now)\b/i.test(item.prompt))
         item.prompt = item.prompt.replace(/[.!?]$/, "") + " yesterday.";
+      if (Array.isArray(item?.options)) {
+        const pastForms = input.topic === 10 ? REGULAR_PAST : [...REGULAR_PAST, ...IRREGULAR_PAST];
+        const matches = item.options.flatMap((option, index) => typeof option === "string" &&
+          pastForms.includes(option.toLowerCase()) ? [index] : []);
+        if (matches.length === 1) item.answer = matches[0];
+      }
     });
+  }
+  if (mode === "grammar" && input.topic === 9 && Array.isArray(output.questions)) {
+    output.questions.forEach(item => {
+      if (!item || typeof item.prompt !== "string" || !Array.isArray(item.options)) return;
+      item.prompt = item.prompt.replace(/^___\s+(I|you|we|they|he|she|it)\s+___\s+(\w+ing\b)/i, "___ $1 $2");
+      const match = item.prompt.match(/^___\s+(am|is|are)\s+(\w+ing\b.*)$/i);
+      const chosen = item.options[item.answer]?.trim();
+      const expected = BE_FOR_PRONOUN[chosen?.toLowerCase()];
+      if (!match || expected !== match[1].toLowerCase()) return;
+      item.prompt = `${chosen === "i" ? "I" : chosen} ___ ${match[2]}`;
+      item.options = ["am", "is", "are"];
+      item.answer = item.options.indexOf(expected);
+    });
+  }
+  if (mode === "grammar" && input.topic === 11 && Array.isArray(output.examples) &&
+      output.examples.some(item => typeof item?.en !== "string" || item.en.includes("_"))) {
+    output.examples = [{ en: "I went to the park yesterday.", zh: "我昨天去了公园。" },
+      { en: "She saw a movie last night.", zh: "她昨晚看了一部电影。" }];
   }
   if (mode === "grammar" && input.topic === 5 && Array.isArray(output.questions)) {
     output.questions.forEach((item, index) => {
-      if (!item || grammarQuestionMatches(5, item) || typeof item.prompt !== "string" || !Array.isArray(item.options)) return;
+      if (!item || typeof item.prompt !== "string" || !Array.isArray(item.options) ||
+          !item.options.every(option => typeof option === "string") || grammarQuestionMatches(5, item)) return;
       const match = item.prompt.match(/^(.+?)\s+___\s+(\w+)(\b.*)$/i);
       const forms = match && canVerbForms(match[2].toLowerCase());
       const selected = item.options[item.answer]?.toLowerCase();
@@ -180,7 +270,8 @@ async function generateKnowledge(input, env) {
       item.answer = (3 - index) % 3;
     });
   }
-  if (!validGeneratedKnowledge(mode, output, input.avoidWords, input.topic)) return null;
+  if (!validGeneratedKnowledge(mode, output, input.avoidWords, input.topic))
+    return mode === "grammar" && JSON.stringify(output).length <= 12000 ? { incomplete: output } : null;
   let verdict = { valid: true };
   if (mode !== "grammar") {
     const review = await env.AI.run(TEACH_MODEL, {
@@ -197,10 +288,7 @@ async function generateKnowledge(input, env) {
   if (mode === "words") return { mode, title: `${scene} · 第${input.sequence + 1}组`,
     items: output.items.map(item => ({ en: item.en.trim().toLowerCase(), zh: clean(item.zh),
       example: item.example.trim(), exampleZh: clean(item.exampleZh) })) };
-  if (mode === "grammar") return { mode, title, rule,
-    examples: output.examples.map(item => ({ en: item.en.trim(), zh: clean(item.zh) })),
-    questions: output.questions.map(item => ({ prompt: item.prompt.trim(), options: item.options.map(option => option.trim()),
-      answer: item.answer, explanation: rule })) };
+  if (mode === "grammar") return grammarPack(input.topic, output);
   if (mode === "translate") return { mode, title: `${scene} · 第${input.sequence + 1}组`,
     items: output.items.map(item => ({ zh: clean(item.zh), reference: item.reference.trim(), hint: clean(item.hint) })) };
   return { mode, title: `${scene} · 第${input.sequence + 1}篇`, passage: output.lines.map(line => line.en.trim()).join(" "),
@@ -412,8 +500,16 @@ export async function handleRequest(request, env) {
           (input.mode === "grammar" && (!Number.isInteger(input.topic) || input.topic < 0 || input.topic >= GRAMMAR_TOPICS.length)))
         return reply({ error: "练习请求无效。" }, 400);
       let pack = await generateKnowledge(input, env);
-      if (!pack) pack = await generateKnowledge(input, env);
-      return pack ? reply(pack) : reply({ error: "这次 AI 练习未通过内容检查，请再试一次。" }, 502);
+      if (input.mode === "grammar" && pack?.incomplete)
+        pack = mergeGrammar(input.topic, [pack.incomplete]) || pack;
+      if (!pack || pack.incomplete) {
+        const second = await generateKnowledge(input, env, true);
+        pack = second && !second.incomplete ? second : input.mode === "grammar" ?
+          mergeGrammar(input.topic, [pack?.incomplete, second?.incomplete]) : null;
+      }
+      return pack ? reply(pack) : reply({ error: input.mode === "grammar" ?
+        `${GRAMMAR_TOPICS[input.topic][0]}：这次 AI 练习未通过内容检查，请再试一次。` :
+        "这次 AI 练习未通过内容检查，请再试一次。" }, 502);
     }
     if (path === "/roleplay") {
       if (Number(request.headers.get("content-length")) > 5000) return reply({ error: "任务对话太长。" }, 413);

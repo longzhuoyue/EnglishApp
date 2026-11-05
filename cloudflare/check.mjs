@@ -138,7 +138,34 @@ for (const mode of ["words", "grammar", "translate", "reading"]) {
   if (mode === "reading") assert.ok(pack.passage.split(/\s+/).length >= 65);
 }
 assert.equal((await handleRequest(knowledgeRequest("words", { avoidWords: ["hello"] }), knowledgeEnv)).status, 502);
-assert.equal((await handleRequest(knowledgeRequest("grammar", { topic: 2 }), knowledgeEnv)).status, 502);
+const invalidGrammar = await handleRequest(knowledgeRequest("grammar", { topic: 2 }), knowledgeEnv);
+assert.equal(invalidGrammar.status, 502);
+assert.match((await invalidGrammar.json()).error, /一般现在时否定句/);
+const bePack = { examples: knowledgePacks.grammar.examples, questions: [
+  { prompt: "___ is my best friend.", options: ["I", "He", "You"], answer: 1, explanation: "He 后面用 is。" },
+  { prompt: "___ a doctor.", options: ["You", "She", "It"], answer: 0, explanation: "You 后面用 are。" },
+  { prompt: "___ a student.", options: ["I am", "You are", "He is"], answer: 0, explanation: "I 后面用 am。" }
+] };
+let beAttempts = 0;
+const normalizedBe = await handleRequest(knowledgeRequest("grammar", { topic: 0 }), {
+  ...env, AI: { async run() { beAttempts++; return { choices: [{ message: { content: JSON.stringify(bePack) } }] }; } }
+});
+assert.equal(normalizedBe.status, 200);
+assert.equal(beAttempts, 1);
+assert.deepEqual((await normalizedBe.json()).questions.map(item => item.options[item.answer]), ["is", "are", "am"]);
+const beMissingSubjects = { examples: [{ en: "I am a student.", zh: "我是一名学生。" },
+  { en: "She is happy today.", zh: "她今天很开心。" }], questions: [
+  { prompt: "___ a nice day today.", options: ["am", "is", "are"], answer: 1, explanation: "It 后面用 is。" },
+  { prompt: "___ my best friend.", options: ["am", "is", "are"], answer: 0, explanation: "I 后面用 am。" },
+  { prompt: "___ very happy.", options: ["am", "is", "are"], answer: 2, explanation: "They 后面用 are。" }
+] };
+let missingAttempts = 0;
+const recoveredBe = await handleRequest(knowledgeRequest("grammar", { topic: 0 }), {
+  ...env, AI: { async run() { missingAttempts++; return { choices: [{ message: { content: JSON.stringify(beMissingSubjects) } }] }; } }
+});
+assert.equal(recoveredBe.status, 200);
+assert.equal(missingAttempts, 1);
+assert.equal((await recoveredBe.json()).questions.length, 3);
 for (const options of [["can", "can't", "doesn't"], ["swim", "swims", "swimming"], ["valid"]]) {
   let attempts = 0;
   const verbs = ["swim", "sing", "cry"];
@@ -158,6 +185,63 @@ for (const options of [["can", "can't", "doesn't"], ["swim", "swims", "swimming"
   assert.ok(pack.questions.every(item => /\bcan ___/.test(item.prompt)));
   assert.deepEqual(pack.questions.map(item => item.options[item.answer]), verbs);
 }
+const ongoingPack = { examples: [{ en: "She is reading a book now.", zh: "她现在正在读书。" },
+  { en: "They are playing outside.", zh: "他们正在外面玩。" }], questions: [
+  { prompt: "___ is cooking dinner.", options: ["He", "She", "They"], answer: 0, explanation: "主语是 He。" },
+  { prompt: "___ you listening to music?", options: ["Are", "Am", "Is"], answer: 0, explanation: "you 前面用 Are。" },
+  { prompt: "___ he ___ working now?", options: ["Is", "Are", "Am"], answer: 0, explanation: "he 前面用 Is。" }
+] };
+const pastPack = { examples: [{ en: "I ___ to the park yesterday.", zh: "我昨天去了公园。" },
+  { en: "She ___ a movie last night.", zh: "她昨晚看了一部电影。" }], questions: [
+  { prompt: "She ___ her grandmother last weekend.", options: ["visit", "visited", "visiting"], answer: 1, explanation: "visit 的过去式是 visited。" },
+  { prompt: "I ___ bread this morning.", options: ["ate", "eat", "eats"], answer: 0, explanation: "eat 的过去式是 ate。" },
+  { prompt: "He ___ his homework ___ last night.", options: ["did", "do", "done"], answer: 1, explanation: "do 的过去式是 did。" }
+] };
+for (const [topic, generated] of [[9, ongoingPack], [11, pastPack]]) {
+  let attempts = 0;
+  const response = await handleRequest(knowledgeRequest("grammar", { topic }), {
+    ...env, AI: { async run() { attempts++; return { choices: [{ message: { content: JSON.stringify(generated) } }] }; } }
+  });
+  assert.equal(response.status, 200, `grammar topic ${topic}`);
+  assert.equal(attempts, 1);
+  const pack = await response.json();
+  assert.ok(pack.examples.every(item => !item.en.includes("_")));
+  if (topic === 9) assert.ok(pack.questions.every(item => ["is", "are"].includes(item.options[item.answer].toLowerCase())));
+  if (topic === 11) {
+    assert.ok(pack.questions.every(item => !item.prompt.includes("morning yesterday")));
+    assert.equal(pack.questions[2].options[pack.questions[2].answer], "did");
+  }
+}
+const tooRegular = structuredClone(pastPack);
+tooRegular.questions[1] = { prompt: "He ___ his homework yesterday.", options: ["finish", "finished", "finishing"],
+  answer: 1, explanation: "finish 的过去式是 finished。" };
+let pastAttempts = 0;
+const correctedPast = await handleRequest(knowledgeRequest("grammar", { topic: 11 }), {
+  ...env, AI: { async run(model, input) {
+    pastAttempts++;
+    if (pastAttempts === 2) assert.match(input.messages[1].content, /上一次未通过校验/);
+    return { choices: [{ message: { content: JSON.stringify(pastAttempts === 1 ? tooRegular : pastPack) } }] };
+  } }
+});
+assert.equal(correctedPast.status, 200);
+assert.equal(pastAttempts, 2);
+const firstPartial = structuredClone(pastPack);
+firstPartial.questions[2].prompt = "He ___ his homework and ___ to bed last night.";
+const secondPartial = structuredClone(pastPack);
+secondPartial.questions[0] = { prompt: "They ___ to the zoo last weekend.", options: ["go", "went", "gone"],
+  answer: 1, explanation: "go 的过去式是 went。" };
+secondPartial.questions[1].prompt = "I ___ and ___ breakfast yesterday.";
+secondPartial.questions[2].prompt = "He ___ and ___ his homework yesterday.";
+let partialAttempts = 0;
+const mergedPast = await handleRequest(knowledgeRequest("grammar", { topic: 11 }), {
+  ...env, AI: { async run() {
+    partialAttempts++;
+    return { choices: [{ message: { content: JSON.stringify(partialAttempts === 1 ? firstPartial : secondPartial) } }] };
+  } }
+});
+assert.equal(mergedPast.status, 200);
+assert.equal(partialAttempts, 2);
+assert.deepEqual((await mergedPast.json()).questions.map(item => item.options[item.answer]).sort(), ["ate", "visited", "went"]);
 assert.equal((await handleRequest(knowledgeRequest("words", { avoidWords: Array(301).fill("test") }), knowledgeEnv)).status, 400);
 let retryCount = 0;
 const retryKnowledgeEnv = { ...knowledgeEnv, AI: { async run(model, input) {
