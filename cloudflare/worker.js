@@ -28,7 +28,7 @@ const GRAMMAR_TASKS = [
   "Test negative habitual ACTION verbs: pronoun subject ___ base verb. Use only pronoun subjects I/you/we/they/he/she/it. Options must include don't and doesn't, and the correct one must match the subject.",
   "Start each question with ___ followed by a pronoun subject I/you/we/they/he/she/it and a base ACTION verb. Options must include Do and Does; the correct one must match the subject.",
   "Use pronoun subject I/you/we/they/he/she/it ___ object with have and has among the options. The answer must match the subject.",
-  "Put ___ AFTER can or can't, and test a base ACTION verb versus -s and -ing forms. Example question: prompt='She can ___ well.', options=['swim','swims','swimming'], answer=0. Do not put can/can't in the options because both can be grammatical.",
+  "All 3 prompts MUST contain the literal text 'can ___' or 'can't ___'. The blank is ALWAYS the action verb AFTER can/can't, NEVER can/can't itself. For each question choose one verb such as swim, sing, cook, or play; options must be that same verb in base, -s, and -ing forms. Example: prompt='She can ___ well.', options=['swim','swims','swimming'], answer=0. The base form is always correct. Never put can, can't, do, or doesn't in options.",
   "Put ___ immediately before a simple singular noun. Options must include a and an. Use clear words like apple, egg, orange, book, bag, or car.",
   "Put ___ after a number such as two, three, or four, and test the PLURAL form of a noun. Do not test verbs.",
   "Start each question with There ___, and test is versus are according to the following noun phrase.",
@@ -38,6 +38,17 @@ const GRAMMAR_TASKS = [
 ];
 
 const KNOWLEDGE_SCENES = ["打招呼", "自我介绍", "咖啡店", "餐厅", "问路", "购物", "乘车", "酒店", "天气", "周末计划", "兴趣爱好", "寻求帮助"];
+function canVerbForms(verb) {
+  if (typeof verb !== "string" || !/^[a-z]{2,20}$/.test(verb) ||
+      ["can", "cannot", "is", "are", "was", "were"].includes(verb)) return null;
+  const third = ({ have: "has", do: "does" })[verb] ||
+    (/[^aeiou]y$/.test(verb) ? `${verb.slice(0, -1)}ies` : /(?:s|sh|ch|x|z|o)$/.test(verb) ? `${verb}es` : `${verb}s`);
+  const ing = ({ swim: "swimming", run: "running", sit: "sitting", get: "getting",
+    stop: "stopping", shop: "shopping", plan: "planning", put: "putting", cut: "cutting",
+    die: "dying", lie: "lying", tie: "tying" })[verb] ||
+    (/e$/.test(verb) && !/(?:ee|ye|oe)$/.test(verb) ? `${verb.slice(0, -1)}ing` : `${verb}ing`);
+  return [verb, third, ing];
+}
 const stringField = { type: "string" };
 const objectField = properties => ({ type: "object", properties, required: Object.keys(properties), additionalProperties: false });
 const arrayField = (items, count) => ({ type: "array", minItems: count, maxItems: count, items });
@@ -69,8 +80,10 @@ function grammarQuestionMatches(topic, item) {
   }
   if (topic === 4) return !!subject && options.includes("have") && options.includes("has") &&
     selected === (third ? "has" : "have");
-  if (topic === 5) return /\bcan(?:'t)?\s+___/i.test(prompt) && options.some(option => option.endsWith("ing")) &&
-    !["can", "can't"].includes(selected);
+  if (topic === 5) {
+    const forms = canVerbForms(selected);
+    return /\bcan(?:'t)?\s+___/i.test(prompt) && !!forms && forms.every(form => options.includes(form));
+  }
   if (topic === 6) return /___\s+[A-Za-z]+/.test(prompt) && options.includes("a") && options.includes("an") &&
     ["a", "an"].includes(selected);
   if (topic === 7) return /\b(two|three|four|five|six|many|several)\s+___/i.test(prompt) &&
@@ -138,7 +151,7 @@ async function generateKnowledge(input, env) {
   };
   const result = await env.AI.run(KNOWLEDGE_MODEL, {
     messages: [{ role: "system", content: `You create accurate beginner English lessons. Chinese fields must use natural Simplified Chinese only; English fields must use natural beginner English only. Return only the requested JSON fields. ${instructions[mode]}` },
-      { role: "user", content: mode === "grammar" ? `请生成第 ${input.sequence + 1} 组语法练习。questions.prompt 必须是完整英文句子，含三个下划线 ___，每题只考当前语法点。例句译文和解释用简体中文。` :
+      { role: "user", content: mode === "grammar" ? `请生成第 ${input.sequence + 1} 组语法练习。questions.prompt 必须是完整英文句子，含三个下划线 ___，每题只考当前语法点。${input.topic === 5 ? "这组三道题的空格一律放在 can 或 can't 后面，选项只填动作动词原形、第三人称形式和 ing 形式，绝不能把 can、can't、do 或 doesn't 放进选项。" : ""}例句译文和解释用简体中文。` :
         `请生成第 ${input.sequence + 1} 组全新的练习。题目、提示和解释请使用简体中文；英文只放在英文句子、选项和单词字段中。` }],
     response_format: { type: "json_schema", json_schema: KNOWLEDGE_SCHEMAS[mode] },
     chat_template_kwargs: { enable_thinking: false },
@@ -152,6 +165,19 @@ async function generateKnowledge(input, env) {
     output.questions.forEach(item => {
       if (typeof item?.prompt === "string" && !/\b(yesterday|last|ago|tomorrow|next|today|now)\b/i.test(item.prompt))
         item.prompt = item.prompt.replace(/[.!?]$/, "") + " yesterday.";
+    });
+  }
+  if (mode === "grammar" && input.topic === 5 && Array.isArray(output.questions)) {
+    output.questions.forEach((item, index) => {
+      if (!item || grammarQuestionMatches(5, item) || typeof item.prompt !== "string" || !Array.isArray(item.options)) return;
+      const match = item.prompt.match(/^(.+?)\s+___\s+(\w+)(\b.*)$/i);
+      const forms = match && canVerbForms(match[2].toLowerCase());
+      const selected = item.options[item.answer]?.toLowerCase();
+      if (!forms || /\bcan(?:'t)?$/i.test(match[1]) ||
+          !(selected === forms[0] || item.options.some(option => ["can", "can't"].includes(option.toLowerCase())))) return;
+      item.prompt = `${match[1]} ${selected === "can't" ? "can't" : "can"} ___${match[3]}`;
+      item.options = forms.slice(index).concat(forms.slice(0, index));
+      item.answer = (3 - index) % 3;
     });
   }
   if (!validGeneratedKnowledge(mode, output, input.avoidWords, input.topic)) return null;

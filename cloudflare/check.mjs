@@ -139,6 +139,25 @@ for (const mode of ["words", "grammar", "translate", "reading"]) {
 }
 assert.equal((await handleRequest(knowledgeRequest("words", { avoidWords: ["hello"] }), knowledgeEnv)).status, 502);
 assert.equal((await handleRequest(knowledgeRequest("grammar", { topic: 2 }), knowledgeEnv)).status, 502);
+for (const options of [["can", "can't", "doesn't"], ["swim", "swims", "swimming"], ["valid"]]) {
+  let attempts = 0;
+  const verbs = ["swim", "sing", "cry"];
+  const forms = { swim: ["swim", "swims", "swimming"], sing: ["sing", "sings", "singing"],
+    cry: ["cry", "cries", "crying"] };
+  const generated = { examples: knowledgePacks.grammar.examples,
+    questions: verbs.map((verb, index) => ({ prompt: options[0] === "valid" ?
+      `${["She", "They", "We"][index]} can ___ well.` : `${["She", "They", "We"][index]} ___ ${verb} well.`,
+      options: options[0] === "can" ? options : forms[verb],
+      answer: options[0] === "can" && index === 2 ? 2 : 0, explanation: "can 后接动词原形。" })) };
+  const repaired = await handleRequest(knowledgeRequest("grammar", { topic: 5 }), {
+    ...env, AI: { async run() { attempts++; return { choices: [{ message: { content: JSON.stringify(generated) } }] }; } }
+  });
+  assert.equal(repaired.status, 200, `can/can't grammar with ${options[0]} options`);
+  const pack = await repaired.json();
+  assert.equal(attempts, 1);
+  assert.ok(pack.questions.every(item => /\bcan ___/.test(item.prompt)));
+  assert.deepEqual(pack.questions.map(item => item.options[item.answer]), verbs);
+}
 assert.equal((await handleRequest(knowledgeRequest("words", { avoidWords: Array(301).fill("test") }), knowledgeEnv)).status, 400);
 let retryCount = 0;
 const retryKnowledgeEnv = { ...knowledgeEnv, AI: { async run(model, input) {
