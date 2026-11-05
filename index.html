@@ -23,6 +23,7 @@
     .sub { margin: 0 0 28px; color: #667078; line-height: 1.5; }
     .ai-card { margin: 18px 0; padding: 24px; border-radius: 26px; background: #e9efd7; }
     .teacher-card { background: #e5f0ef; }
+    .course-card { background: #dff3bc; }
     .knowledge-card { background: #e8eedc; }
     .notebook-card { background: #e8e8f5; }
     .listening-card { background: #f0e8dc; }
@@ -66,18 +67,28 @@
     .dialogue-line small { display: block; margin-top: 6px; color: #667078; }
     .choice { display: block; width: 100%; margin: 9px 0; padding: 14px; border: 1px solid #d7ded6; border-radius: 13px; text-align: left; background: white; }
     .feedback { margin: 14px 0; color: #425523; line-height: 1.5; }
+    .course-word { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 8px 0; padding: 9px 12px; border-radius: 12px; background: #f5f5f0; }
+    .course-sound { padding: 6px 10px; border-radius: 10px; background: #e8eedc; }
+    .course-large { font-size: 32px; font-weight: 800; }
   </style>
-  <script src="./notebook.js?v=18" defer></script>
-  <script src="./listening.js?v=18" defer></script>
-  <script src="./knowledge.js?v=18" defer></script>
-  <script src="./ai-chat.js?v=18" defer></script>
-  <script src="./backup.js?v=18" defer></script>
+  <script src="./notebook.js?v=19" defer></script>
+  <script src="./listening.js?v=19" defer></script>
+  <script src="./knowledge.js?v=19" defer></script>
+  <script src="./ai-chat.js?v=19" defer></script>
+  <script src="./course-data.js?v=19" defer></script>
+  <script src="./course.js?v=19" defer></script>
+  <script src="./backup.js?v=19" defer></script>
 </head>
 <body>
   <main class="shell">
     <div class="brand"><span class="mark" aria-hidden="true">✦</span><span>WORDSPRING</span></div>
     <h1>每天一点，<br>英语更近一点。</h1>
     <p class="sub">每天 30 分钟，听一段、说一句、解决一个问题。</p>
+    <section class="ai-card course-card" aria-label="系统课程">
+      <p class="kicker">阶段 1 · A1 入门 · 24 单元</p><h2>系统课程</h2>
+      <p>从问候到日常交流，按主题学词句、听力、语法、阅读和表达。课程与间隔复习可离线使用。</p>
+      <p id="course-summary">正在加载课程进度</p><button id="course-open">进入课程 →</button>
+    </section>
     <section class="ai-card teacher-card" aria-label="AI 英语老师">
       <p class="kicker">提问解答 · 对话纠错</p><h2>AI 英语老师</h2>
       <p>不懂就问；也可以用英语聊天，查看建议表达和简短原因。</p>
@@ -112,7 +123,7 @@
       <p id="notebook-summary">正在加载错句</p><button id="notebook-open">打开错句本 →</button>
     </section>
     <details class="backup"><summary>学习进度备份</summary><div class="backup-content">
-      <p>备份包含知识学习、错句本、听力和任务对话进度。导出后请复制保存；恢复时粘贴备份文本再点击导入。</p>
+      <p>备份包含系统课程、知识学习、错句本、听力和任务对话进度。导出后请复制保存；恢复时粘贴备份文本再点击导入。</p>
       <textarea id="backup-text" aria-label="进度备份文本"></textarea>
       <div class="backup-actions"><button id="backup-export">导出并复制</button><button id="backup-import">导入备份</button></div>
       <p id="backup-message" role="status"></p>
@@ -157,6 +168,12 @@
       <div class="lesson-footer" id="knowledge-actions"></div></div>
   </section>
 
+  <section class="overlay" id="course-view" aria-label="系统课程" hidden>
+    <div class="overlay-inner"><div class="overlay-top"><strong>系统课程 · 阶段 1</strong><button id="course-close">关闭</button></div>
+      <p class="tip" id="course-position" role="status"></p><div class="lesson-panel" id="course-content"></div>
+      <div class="lesson-footer" id="course-actions"></div></div>
+  </section>
+
   <section class="overlay" id="notebook-view" aria-label="我的错句本" hidden>
     <div class="overlay-inner"><div class="overlay-top"><strong>我的错句本</strong><button id="notebook-close">关闭</button></div>
       <p class="tip" id="notebook-position"></p><div class="lesson-panel" id="notebook-content"></div>
@@ -168,6 +185,6 @@
       <p class="tip" id="listening-position"></p><div class="lesson-panel" id="listening-content"></div>
       <div class="lesson-footer" id="listening-actions"></div></div>
   </section>
-  <script>if ("serviceWorker" in navigator) navigator.serviceWorker.register("./sw.js?v=18").catch(() => {});</script>
+  <script>if ("serviceWorker" in navigator) navigator.serviceWorker.register("./sw.js?v=19").catch(() => {});</script>
 </body>
 </html>
