@@ -8,7 +8,12 @@ const makeElement = () => ({ children: [], style: {}, hidden: false, textContent
   append(...items) { this.children.push(...items); },
   replaceChildren(...items) { this.children = items; }, click() { this.onclick(); } });
 const ids = Object.fromEntries([...html.matchAll(/id="([^"]+)"/g)].map(match => [match[1], makeElement()]));
-const values = new Map([["wordspring-ai-settings-v1", '{"passcode":"test-only"}']]);
+const legacy = freshKnowledge();
+delete legacy.wordsCycleVersion;
+legacy.completed.words = 30;
+legacy.recent.words = ["旧组一", "旧组二", "旧组三", "旧组四", "旧组五"];
+const values = new Map([["wordspring-ai-settings-v1", '{"passcode":"test-only"}'],
+  ["wordspring-knowledge-v1", JSON.stringify(legacy)]]);
 const packs = {
   words: { title: "问候", items: ["hello", "bye", "name", "meet", "friend"].map(en => ({ en, zh: "意思", example: `I say ${en}.`, exampleZh: "我说了这个词。" })) },
   grammar: { title: "am / is / are", rule: "I 后用 am。", examples: [{ en: "I am ready.", zh: "我准备好了。" }, { en: "She is happy.", zh: "她很开心。" }],
@@ -18,13 +23,15 @@ const packs = {
     questions: [0, 1, 2].map(() => ({ prompt: "他们去哪儿？", options: ["公园", "银行", "学校"], answer: 0, explanation: "他们去了公园。" })) }
 };
 let lastRequest;
+let wordVariants = null;
 const context = vm.createContext({ document: { body: { style: {} },
   getElementById: id => { assert.ok(ids[id], `Missing element ${id}`); return ids[id]; }, createElement: makeElement },
   localStorage: { getItem: key => values.get(key) || null, setItem: (key, value) => values.set(key, value) },
   window: {}, confirm: () => true, AbortController, setTimeout, clearTimeout,
   fetch: async (url, options) => {
     lastRequest = { url, ...JSON.parse(options.body) };
-    const body = lastRequest.action === "check" ? { acceptable: true, feedback: "表达正确。", improved: "Good morning." } : packs[lastRequest.mode];
+    const body = lastRequest.action === "check" ? { acceptable: true, feedback: "表达正确。", improved: "Good morning." } :
+      lastRequest.mode === "words" && wordVariants ? wordVariants.find(pack => !lastRequest.avoid.includes(pack.title)) || wordVariants[0] : packs[lastRequest.mode];
     return { ok: true, json: async () => body };
   } });
 vm.runInContext(fs.readFileSync("knowledge.js", "utf8"), context);
@@ -36,11 +43,14 @@ const start = async mode => { const index = ["words", "grammar", "translate", "r
 
 (async () => {
   assert.equal(validKnowledge(freshKnowledge()), true);
+  assert.equal(progress().completed.words, 30);
+  assert.deepEqual(progress().recent.words, []);
+  assert.equal(progress().wordsCycleVersion, 1);
   await start("words");
   assert.equal(lastRequest.mode, "words");
   assert.equal(progress().session.index, 0);
   for (let i = 0; i < 5; i++) { actions.children[0].onclick(); assert.equal(progress().session.result.revealed, true); actions.children[0].onclick(); }
-  assert.equal(progress().completed.words, 1);
+  assert.equal(progress().completed.words, 31);
 
   await start("grammar");
   assert.equal(lastRequest.topic, 0);
@@ -72,5 +82,16 @@ const start = async mode => { const index = ["words", "grammar", "translate", "r
   assert.ok(content.children.some(el => el.textContent === packs.reading.translation));
   actions.children[0].onclick();
   assert.equal(progress().completed.reading, 1);
+
+  wordVariants = Array.from({ length: 20 }, (_, i) => ({ ...packs.words, title: i ? `第 ${i + 1} 组` : "问候" }));
+  const seen = [];
+  for (let i = 0; i < 30; i++) {
+    await start("words");
+    seen.push(progress().session.pack.title);
+    for (let word = 0; word < 5; word++) { actions.children[0].onclick(); actions.children[0].onclick(); }
+  }
+  assert.equal(new Set(seen.slice(0, 20)).size, 20, "20 组单词应先各出现一次");
+  assert.ok(Math.max(...[...new Set(seen)].map(title => seen.filter(item => item === title).length)) <= 2,
+    "完成 30 组时，同一词组最多出现两次");
   console.log("WordSpring knowledge checks passed");
 })().catch(error => { console.error(error); process.exitCode = 1; });

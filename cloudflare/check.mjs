@@ -115,6 +115,15 @@ for (const mode of ["words", "grammar", "translate", "reading"]) {
     }
   }
 }
+const longAvoid = Array.from({ length: 19 }, (_, i) => `已学 ${i}`);
+assert.equal((await handleRequest(post("/knowledge", JSON.stringify({ action: "generate", mode: "words", avoid: longAvoid })), knowledgeEnv)).status, 200);
+const seenWordTitles = [];
+for (let i = 0; i < 20; i++) {
+  const pack = await (await handleRequest(post("/knowledge", JSON.stringify({ action: "generate", mode: "words", avoid: seenWordTitles })), knowledgeEnv)).json();
+  assert.ok(!seenWordTitles.includes(pack.title), "一轮单词练习不应重复词组");
+  seenWordTitles.push(pack.title);
+}
+assert.equal(new Set(seenWordTitles).size, 20);
 for (let i = 0; i < 50; i++) {
   const pack = await (await handleRequest(post("/knowledge", JSON.stringify({ action: "generate", mode: "reading", avoid: [] })), knowledgeEnv)).json();
   assert.ok(pack.passage.split(/\s+/).length >= 50);

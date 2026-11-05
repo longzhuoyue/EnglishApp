@@ -344,7 +344,7 @@ export async function handleRequest(request, env) {
           improved: output.acceptable ? input.answer.trim() : input.reference.trim(), reference: input.reference.trim() });
       }
       if (!input || input.action !== "generate" || !["words", "grammar", "translate", "reading"].includes(input.mode) ||
-          !Array.isArray(input.avoid) || input.avoid.length > 5 || input.avoid.some(title => typeof title !== "string" || title.length > 60) ||
+          !Array.isArray(input.avoid) || input.avoid.length > (input.mode === "words" ? 20 : 5) || input.avoid.some(title => typeof title !== "string" || title.length > 60) ||
           (input.mode === "grammar" && (!Number.isInteger(input.topic) || input.topic < 0 || input.topic >= GRAMMAR_TOPICS.length)))
         return reply({ error: "练习请求无效。" }, 400);
       if (input.mode === "grammar") {
