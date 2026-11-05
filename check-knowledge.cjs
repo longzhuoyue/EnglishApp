@@ -10,6 +10,7 @@ const makeElement = () => ({ children: [], style: {}, hidden: false, textContent
 const ids = Object.fromEntries([...html.matchAll(/id="([^"]+)"/g)].map(match => [match[1], makeElement()]));
 const legacy = freshKnowledge();
 delete legacy.wordsCycleVersion;
+delete legacy.seenWords;
 legacy.completed.words = 30;
 legacy.recent.words = ["旧组一", "旧组二", "旧组三", "旧组四", "旧组五"];
 const values = new Map([["wordspring-ai-settings-v1", '{"passcode":"test-only"}'],
@@ -31,7 +32,7 @@ const context = vm.createContext({ document: { body: { style: {} },
   fetch: async (url, options) => {
     lastRequest = { url, ...JSON.parse(options.body) };
     const body = lastRequest.action === "check" ? { acceptable: true, feedback: "表达正确。", improved: "Good morning." } :
-      lastRequest.mode === "words" && wordVariants ? wordVariants.find(pack => !lastRequest.avoid.includes(pack.title)) || wordVariants[0] : packs[lastRequest.mode];
+      lastRequest.mode === "words" && wordVariants ? wordVariants[lastRequest.sequence - 31] : packs[lastRequest.mode];
     return { ok: true, json: async () => body };
   } });
 vm.runInContext(fs.readFileSync("knowledge.js", "utf8"), context);
@@ -46,11 +47,13 @@ const start = async mode => { const index = ["words", "grammar", "translate", "r
   assert.equal(progress().completed.words, 30);
   assert.deepEqual(progress().recent.words, []);
   assert.equal(progress().wordsCycleVersion, 1);
+  assert.deepEqual(progress().seenWords, []);
   await start("words");
   assert.equal(lastRequest.mode, "words");
   assert.equal(progress().session.index, 0);
   for (let i = 0; i < 5; i++) { actions.children[0].onclick(); assert.equal(progress().session.result.revealed, true); actions.children[0].onclick(); }
   assert.equal(progress().completed.words, 31);
+  assert.deepEqual(progress().seenWords, ["hello", "bye", "name", "meet", "friend"]);
 
   await start("grammar");
   assert.equal(lastRequest.topic, 0);
@@ -83,15 +86,18 @@ const start = async mode => { const index = ["words", "grammar", "translate", "r
   actions.children[0].onclick();
   assert.equal(progress().completed.reading, 1);
 
-  wordVariants = Array.from({ length: 20 }, (_, i) => ({ ...packs.words, title: i ? `第 ${i + 1} 组` : "问候" }));
-  const seen = [];
+  wordVariants = Array.from({ length: 30 }, (_, i) => ({ title: `实时第 ${i + 1} 组`, items: Array.from({ length: 5 }, (_, j) => {
+    const number = i * 5 + j;
+    const en = `word${String.fromCharCode(97 + Math.floor(number / 26))}${String.fromCharCode(97 + number % 26)}`;
+    return { en, zh: "意思", example: `I say ${en}.`, exampleZh: "我说了这个词。" };
+  }) }));
   for (let i = 0; i < 30; i++) {
     await start("words");
-    seen.push(progress().session.pack.title);
+    assert.equal(lastRequest.sequence, 31 + i);
+    assert.ok(lastRequest.avoidWords.includes("hello"));
+    if (i) assert.ok(lastRequest.avoidWords.includes(wordVariants[i - 1].items[0].en));
     for (let word = 0; word < 5; word++) { actions.children[0].onclick(); actions.children[0].onclick(); }
   }
-  assert.equal(new Set(seen.slice(0, 20)).size, 20, "20 组单词应先各出现一次");
-  assert.ok(Math.max(...[...new Set(seen)].map(title => seen.filter(item => item === title).length)) <= 2,
-    "完成 30 组时，同一词组最多出现两次");
+  assert.equal(progress().seenWords.length, 155);
   console.log("WordSpring knowledge checks passed");
 })().catch(error => { console.error(error); process.exitCode = 1; });

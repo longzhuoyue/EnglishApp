@@ -67,11 +67,11 @@
     .choice { display: block; width: 100%; margin: 9px 0; padding: 14px; border: 1px solid #d7ded6; border-radius: 13px; text-align: left; background: white; }
     .feedback { margin: 14px 0; color: #425523; line-height: 1.5; }
   </style>
-  <script src="./notebook.js?v=17" defer></script>
-  <script src="./listening.js?v=17" defer></script>
-  <script src="./knowledge.js?v=17" defer></script>
-  <script src="./ai-chat.js?v=17" defer></script>
-  <script src="./backup.js?v=17" defer></script>
+  <script src="./notebook.js?v=18" defer></script>
+  <script src="./listening.js?v=18" defer></script>
+  <script src="./knowledge.js?v=18" defer></script>
+  <script src="./ai-chat.js?v=18" defer></script>
+  <script src="./backup.js?v=18" defer></script>
 </head>
 <body>
   <main class="shell">
@@ -84,8 +84,8 @@
       <button id="teacher-open">开始学习 →</button>
     </section>
     <section class="ai-card knowledge-card" aria-label="知识学习">
-      <p class="kicker">四个专项 · 每天 30 分钟</p><h2>知识学习</h2>
-      <p>在线单词、基础语法、句子翻译和阅读理解，选一项开始练。</p>
+      <p class="kicker">四个 AI 实时专项 · 每天 30 分钟</p><h2>知识学习</h2>
+      <p>单词、基础语法、句子翻译和阅读理解，每次开启新练习都会联网生成。</p>
       <p id="knowledge-summary">正在加载学习进度</p><button id="knowledge-open">选择专项 →</button>
     </section>
     <section class="ai-card listening-card" aria-label="分级听力">
@@ -168,6 +168,6 @@
       <p class="tip" id="listening-position"></p><div class="lesson-panel" id="listening-content"></div>
       <div class="lesson-footer" id="listening-actions"></div></div>
   </section>
-  <script>if ("serviceWorker" in navigator) navigator.serviceWorker.register("./sw.js?v=17").catch(() => {});</script>
+  <script>if ("serviceWorker" in navigator) navigator.serviceWorker.register("./sw.js?v=18").catch(() => {});</script>
 </body>
 </html>

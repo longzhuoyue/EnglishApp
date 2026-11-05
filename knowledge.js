@@ -5,7 +5,7 @@ const KNOWLEDGE_NAMES = { words: "在线单词", grammar: "语法练习", transl
 
 function freshKnowledge() {
   return { completed: { words: 0, grammar: 0, translate: 0, reading: 0 }, grammarIndex: 0,
-    recent: { words: [], grammar: [], translate: [], reading: [] }, wordsCycleVersion: 1, session: null };
+    recent: { words: [], grammar: [], translate: [], reading: [] }, wordsCycleVersion: 1, seenWords: [], session: null };
 }
 
 function validKnowledgePack(mode, pack) {
@@ -28,6 +28,8 @@ function validKnowledge(value) {
   if (!value || typeof value !== "object" || JSON.stringify(value).length > 30000 ||
       !value.completed || !value.recent || !Number.isInteger(value.grammarIndex) || value.grammarIndex < 0 || value.grammarIndex > 11) return false;
   if (value.wordsCycleVersion !== undefined && value.wordsCycleVersion !== 1) return false;
+  if (value.seenWords !== undefined && (!Array.isArray(value.seenWords) || value.seenWords.length > 300 ||
+      value.seenWords.some(word => typeof word !== "string" || !/^[a-z]+(?:-[a-z]+)?$/.test(word) || word.length > 24))) return false;
   if (!KNOWLEDGE_MODES.every(mode => Number.isInteger(value.completed[mode]) && value.completed[mode] >= 0 && value.completed[mode] <= 100000 &&
       Array.isArray(value.recent[mode]) && value.recent[mode].length <= (mode === "words" ? 20 : 5) &&
       value.recent[mode].every(title => typeof title === "string" && title.length <= 80))) return false;
@@ -57,6 +59,7 @@ function startKnowledge() {
     progress.wordsCycleVersion = 1;
     try { localStorage.setItem(KNOWLEDGE_KEY, JSON.stringify(progress)); } catch { /* Continue without saved progress. */ }
   }
+  if (!progress.seenWords) { progress.seenWords = []; try { localStorage.setItem(KNOWLEDGE_KEY, JSON.stringify(progress)); } catch { /* Continue without saved progress. */ } }
   function node(tag, value, className) { const el = document.createElement(tag); el.textContent = value; if (className) el.className = className; return el; }
   function button(label, action, className = "utility-button") { const el = node("button", label, className); el.onclick = action; return el; }
   function panel(...children) { $("knowledge-content").replaceChildren(...children); }
@@ -80,11 +83,11 @@ function startKnowledge() {
   }
   function overview() {
     position("按自己的节奏练习 · 建议每天约 30 分钟");
-    panel(node("h2", "知识学习"), node("p", "选择一个专项开始。练习内容联网获取，进度保存在这台设备。"),
-      button("在线单词 · 20 组轮换，每组 5 个 →", () => generate("words"), "choice"),
-      button("语法练习 · 每组 3 题 →", () => generate("grammar"), "choice"),
-      button("句子翻译 · 每组 3 句 →", () => generate("translate"), "choice"),
-      button("阅读理解 · 每篇 3 题 →", () => generate("reading"), "choice"));
+    panel(node("h2", "知识学习"), node("p", "每组练习由 AI 联网生成，完成后保存在这台设备。"),
+      button("在线单词 · 实时生成 5 个 →", () => generate("words"), "choice"),
+      button("语法练习 · 实时生成 3 题 →", () => generate("grammar"), "choice"),
+      button("句子翻译 · 实时生成 3 句 →", () => generate("translate"), "choice"),
+      button("阅读理解 · 实时生成 1 篇 →", () => generate("reading"), "choice"));
     actions();
     if (progress.session) {
       const resume = button(`继续上次的${KNOWLEDGE_NAMES[progress.session.mode]} →`, renderSession, "primary");
@@ -99,7 +102,7 @@ function startKnowledge() {
     const code = passcode();
     if (!code) throw new Error("请先在 AI 英语老师的“服务设置”中填写访问口令。");
     controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 60000);
+    const timeout = setTimeout(() => controller.abort(), 90000);
     try {
       const response = await fetch(KNOWLEDGE_ENDPOINT, { method: "POST",
         headers: { "content-type": "application/json", "x-wordspring-passcode": code },
@@ -129,7 +132,8 @@ function startKnowledge() {
     panel(node("h2", "正在准备新练习……"), node("p", "请保持网络连接，生成可能需要几十秒。"));
     actions();
     try {
-      const pack = await request({ action: "generate", mode, topic: progress.grammarIndex, avoid: progress.recent[mode] });
+      const pack = await request({ action: "generate", mode, topic: progress.grammarIndex,
+        sequence: progress.completed[mode], avoidWords: mode === "words" ? progress.seenWords : [] });
       if (current !== requestId || $("knowledge-view").hidden) return;
       if (!validKnowledgePack(mode, pack)) throw new Error("练习内容不完整，请重试。");
       progress.session = { mode, pack, index: 0, result: null };
@@ -150,8 +154,9 @@ function startKnowledge() {
     if (!session) return overview();
     const mode = session.mode;
     progress.completed[mode]++;
-    progress.recent[mode] = [...progress.recent[mode].filter(title => title !== session.pack.title), session.pack.title].slice(mode === "words" ? -20 : -5);
-    if (mode === "words" && progress.recent.words.length === 20) progress.recent.words = [session.pack.title];
+    progress.recent[mode] = [...progress.recent[mode].filter(title => title !== session.pack.title), session.pack.title].slice(-5);
+    if (mode === "words") progress.seenWords = [...new Set([...progress.seenWords,
+      ...session.pack.items.map(item => item.en.toLowerCase())])].slice(-300);
     if (mode === "grammar") progress.grammarIndex = (progress.grammarIndex + 1) % 12;
     progress.session = null;
     save();

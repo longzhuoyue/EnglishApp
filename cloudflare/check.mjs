@@ -86,52 +86,79 @@ assert.equal(generatedBody.answer, 0);
 assert.equal(listeningCall.model, "@cf/meta/llama-3.3-70b-instruct-fp8-fast");
 assert.ok(listeningCall.input.messages[0].content.includes("咖啡店"));
 assert.equal((await handleRequest(post("/listening", JSON.stringify({ level: "错误", avoid: [] })), listeningEnv)).status, 400);
+const knowledgePacks = {
+  words: { items: ["hello", "tea", "bus", "shop", "home"].map(en => ({ en, zh: "意思", example: `I say ${en}.`, exampleZh: "我说了这个词。" })) },
+  grammar: { examples: [{ en: "I am ready.", zh: "我准备好了。" }, { en: "She is happy.", zh: "她很开心。" }],
+    questions: [
+      { prompt: "I ___ ready.", options: ["am", "is", "are"], answer: 0, explanation: "I 后用 am。" },
+      { prompt: "She ___ happy.", options: ["am", "is", "are"], answer: 1, explanation: "She 后用 is。" },
+      { prompt: "They ___ here.", options: ["am", "is", "are"], answer: 2, explanation: "They 后用 are。" }
+    ] },
+  translate: { items: ["早上好。", "你好吗？", "再见。"].map(zh => ({ zh, reference: "Good morning.", hint: "使用 morning。" })) },
+  reading: { lines: [
+    ["On Saturday morning, Mia goes to the park with Ben.", "周六早上，米娅和本一起去公园。"],
+    ["They meet near the bus stop at nine o'clock.", "他们九点在公交车站附近见面。"],
+    ["Mia brings sandwiches and a bottle of cold water.", "米娅带了三明治和一瓶凉水。"],
+    ["Ben brings a red ball for their afternoon game.", "本带了一个红球，准备下午一起玩。"],
+    ["First, they walk around the lake and talk together.", "他们先沿着湖散步，边走边聊。"],
+    ["Then, they eat their lunch under a big tree.", "然后他们在一棵大树下吃午饭。"],
+    ["In the afternoon, they see a little brown dog.", "下午他们看到一只棕色的小狗。"],
+    ["They go home before it starts to rain outside.", "外面下雨前，他们回家了。"]
+  ].map(([en, zh]) => ({ en, zh })),
+    questions: [0, 1, 2].map(() => ({ prompt: "他们在哪里见面？", options: ["bus stop", "school", "shop"], answer: 0, explanation: "短文说他们在车站附近见面。" })) }
+};
+const knowledgeCalls = [];
 const knowledgeEnv = { ...env, AI: { async run(model, input) {
-  return { response: { acceptable: true } };
+  knowledgeCalls.push({ model, input });
+  const prompt = input.messages[0].content;
+  if (prompt.startsWith("Decide whether")) return { response: { acceptable: true } };
+  if (prompt.startsWith("Check this")) return { response: { valid: true, reason: "correct" } };
+  const mode = prompt.includes("Generate 5 DISTINCT") ? "words" : prompt.includes("Teach the fixed") ? "grammar" :
+    prompt.includes("Generate 3 DIFFERENT") ? "translate" : "reading";
+  return { choices: [{ message: { content: JSON.stringify(knowledgePacks[mode]) } }] };
 } } };
+const knowledgeRequest = (mode, extra = {}) => post("/knowledge", JSON.stringify({
+  action: "generate", mode, topic: 0, sequence: 0, avoidWords: [], ...extra
+}));
 for (const mode of ["words", "grammar", "translate", "reading"]) {
-  const response = await handleRequest(post("/knowledge", JSON.stringify({ action: "generate", mode, topic: 0, avoid: [] })), knowledgeEnv);
+  const before = knowledgeCalls.length;
+  const response = await handleRequest(knowledgeRequest(mode), knowledgeEnv);
   assert.equal(response.status, 200, mode);
   const pack = await response.json();
   assert.equal(pack.mode, mode);
-  if (mode === "words") {
-    assert.equal(pack.items.length, 5);
-    assert.ok(pack.items.every(item => item.en && item.zh && item.example && item.exampleZh));
-  }
+  assert.equal(knowledgeCalls.length, before + (mode === "grammar" ? 1 : 2));
+  assert.equal(knowledgeCalls[before].model, "@cf/zai-org/glm-4.7-flash");
+  if (mode !== "grammar") assert.equal(knowledgeCalls[before + 1].model, "@cf/meta/llama-3.3-70b-instruct-fp8-fast");
+  if (mode === "words") assert.equal(pack.items.length, 5);
   if (mode === "grammar") {
     assert.equal(pack.questions.length, 3);
-    assert.equal(pack.examples[0].zh, "我累了。");
+    assert.equal(pack.questions[0].explanation, pack.rule);
   }
-  if (mode === "translate") {
-    assert.equal(pack.items.length, 3);
-    assert.ok(pack.items.every(item => item.zh && item.reference && item.hint));
+  if (mode === "translate") assert.equal(pack.items.length, 3);
+  if (mode === "reading") assert.ok(pack.passage.split(/\s+/).length >= 65);
+}
+assert.equal((await handleRequest(knowledgeRequest("words", { avoidWords: ["hello"] }), knowledgeEnv)).status, 502);
+assert.equal((await handleRequest(knowledgeRequest("grammar", { topic: 2 }), knowledgeEnv)).status, 502);
+assert.equal((await handleRequest(knowledgeRequest("words", { avoidWords: Array(301).fill("test") }), knowledgeEnv)).status, 400);
+let retryCount = 0;
+const retryKnowledgeEnv = { ...knowledgeEnv, AI: { async run(model, input) {
+  if (model === "@cf/zai-org/glm-4.7-flash") {
+    retryCount++;
+    const pack = retryCount === 1 ? { items: Array(5).fill(knowledgePacks.words.items[0]) } : knowledgePacks.words;
+    return { choices: [{ message: { content: JSON.stringify(pack) } }] };
   }
-  if (mode === "reading") {
-    assert.equal(pack.questions.length, 3);
-    assert.ok(pack.passage.split(/\s+/).length >= 50);
-    for (const question of pack.questions) {
-      assert.equal(new Set(question.options).size, 3);
-      assert.ok(question.answer >= 0 && question.answer < 3);
-    }
-  }
-}
-const longAvoid = Array.from({ length: 19 }, (_, i) => `已学 ${i}`);
-assert.equal((await handleRequest(post("/knowledge", JSON.stringify({ action: "generate", mode: "words", avoid: longAvoid })), knowledgeEnv)).status, 200);
-const seenWordTitles = [];
-for (let i = 0; i < 20; i++) {
-  const pack = await (await handleRequest(post("/knowledge", JSON.stringify({ action: "generate", mode: "words", avoid: seenWordTitles })), knowledgeEnv)).json();
-  assert.ok(!seenWordTitles.includes(pack.title), "一轮单词练习不应重复词组");
-  seenWordTitles.push(pack.title);
-}
-assert.equal(new Set(seenWordTitles).size, 20);
-for (let i = 0; i < 50; i++) {
-  const pack = await (await handleRequest(post("/knowledge", JSON.stringify({ action: "generate", mode: "reading", avoid: [] })), knowledgeEnv)).json();
-  assert.ok(pack.passage.split(/\s+/).length >= 50);
-  for (const question of pack.questions) assert.equal(new Set(question.options).size, 3);
-}
+  return { response: { valid: true, reason: "correct" } };
+} } };
+assert.equal((await handleRequest(knowledgeRequest("words"), retryKnowledgeEnv)).status, 200);
+assert.equal(retryCount, 2);
+const rejectedKnowledgeEnv = { ...knowledgeEnv, AI: { async run(model, input) {
+  return input.messages[0].content.startsWith("Check this") ? { response: { valid: false, reason: "incorrect" } } :
+    { choices: [{ message: { content: JSON.stringify(knowledgePacks.words) } }] };
+} } };
+assert.equal((await handleRequest(knowledgeRequest("words"), rejectedKnowledgeEnv)).status, 502);
 const checked = await handleRequest(post("/knowledge", JSON.stringify({ action: "check", mode: "translate", source: "我想要水。", reference: "I would like water.", answer: "I would like some water." })), knowledgeEnv);
 assert.deepEqual(await checked.json(), { acceptable: true, feedback: "意思表达正确，可以继续下一句。", improved: "I would like some water.", reference: "I would like water." });
-assert.equal((await handleRequest(post("/knowledge", JSON.stringify({ action: "generate", mode: "invalid", avoid: [] })), knowledgeEnv)).status, 400);
+assert.equal((await handleRequest(knowledgeRequest("invalid"), knowledgeEnv)).status, 400);
 const roleplayEnv = { ...env, AI: { async run() { return { response: { reply: "What size would you like?", hint: "你想要多大杯？", completed: true, feedback: "记得说出杯型。", better: "I'd like a small coffee, please." } }; } } };
 const roleplayBody = turn => JSON.stringify({ scene: "cafe", turn, messages: [{ role: "user", content: "I'd like coffee." }] });
 const roleplayStart = await (await handleRequest(post("/roleplay", roleplayBody(1)), roleplayEnv)).json();
