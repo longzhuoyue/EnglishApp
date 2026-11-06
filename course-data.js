@@ -291,4 +291,34 @@ const A1_UNITS = [
   }
 ];
 
-if (typeof module !== "undefined") module.exports = { A1_CHAPTERS, A1_UNITS };
+const moreQuestion = (prompt, right, wrong1, wrong2, why) => ({ prompt, options: [right, wrong1, wrong2], answer: 0, ...(why ? { why } : {}) });
+
+// One extra grammar question and two additional comprehension questions per unit.
+const A1_MORE = [
+  [moreQuestion("___, I'm Mia.", "Hello", "Goodbye", "Please", "见面先用 Hello 问候。"), moreQuestion("米娅在哪里遇见林？", "上学路上", "咖啡馆里", "酒店门口"), moreQuestion("林接下来去做什么？", "去上课", "去坐车", "去购物")],
+  [moreQuestion("___ your name?", "What's", "Where's", "How's", "询问名字用 What's your name?"), moreQuestion("本在哪里遇见米娅？", "门口", "公园", "公交车上"), moreQuestion("米娅听到本的介绍后做了什么？", "微笑并告诉他自己的名字", "离开教室", "问他几点了")],
+  [moreQuestion("I'm ___ London.", "from", "at", "on", "表示来自某地用 from。"), moreQuestion("米娅现在住在哪里？", "北京", "成都", "伦敦"), moreQuestion("本来自哪里？", "伦敦", "成都", "北京")],
+  [moreQuestion("___ me. Can you help me?", "Excuse", "Thank", "Good", "打扰别人前说 Excuse me。"), moreQuestion("林找不到什么？", "教室", "书包", "车票"), moreQuestion("谁带林找到房间？", "老师", "同学", "服务员")],
+  [moreQuestion("These are my ___.", "parents", "parent", "parent's", "说父母两人用复数 parents。"), moreQuestion("米娅和哪些人住在一起？", "父母和兄弟", "姐姐和朋友", "老师和同学"), moreQuestion("米娅一家什么时候一起吃饭？", "晚上", "早上", "中午")],
+  [moreQuestion("My birthday is ___ June.", "in", "on", "at", "月份前用 in。"), moreQuestion("本的生日在哪个月？", "六月", "五月", "三月"), moreQuestion("本的妹妹送了他什么？", "一本小书", "一张车票", "一个包")],
+  [moreQuestion("He ___ tall and quiet.", "is", "are", "am", "he 后用 is。"), moreQuestion("本和林是什么关系？", "邻居", "兄弟", "同事"), moreQuestion("本除了安静，还有什么特点？", "友善", "严厉", "懒惰")],
+  [moreQuestion("I ___ a blue bag.", "have", "has", "having", "I 后用 have。"), moreQuestion("本的包是什么颜色？", "红色", "蓝色", "绿色"), moreQuestion("上课前他们把包放在哪里？", "桌上", "车上", "地上")],
+  [moreQuestion("We eat dinner ___ the evening.", "in", "on", "at", "一天中的 evening 前用 in。"), moreQuestion("米娅什么时候吃午饭？", "中午", "早上八点", "睡前"), moreQuestion("米娅睡前做什么？", "读书", "购物", "做早餐")],
+  [moreQuestion("He ___ up at seven.", "gets", "get", "getting", "he 后一般现在时动词加 s。"), moreQuestion("本怎样去上班？", "坐公交", "骑自行车", "坐火车"), moreQuestion("本下班后学英语多久？", "三十分钟", "十分钟", "一小时")],
+  [moreQuestion("I ___ music.", "like", "likes", "liking", "I 后用 like。"), moreQuestion("林什么时候读书？", "晚饭后", "早饭前", "上课时"), moreQuestion("林不会做什么？", "弹钢琴", "唱歌", "听音乐")],
+  [moreQuestion("Let's meet ___ three.", "at", "in", "on", "钟点前用 at。"), moreQuestion("本周六早上怎么样？", "很忙", "有空", "在图书馆"), moreQuestion("他们约在哪里见面？", "图书馆附近", "公园里", "车站旁")],
+  [moreQuestion("Can I ___ the menu?", "have", "has", "having", "Can I 后用动词原形 have。"), moreQuestion("莉娜点了什么主食和配菜？", "鸡肉和米饭", "面条和鱼", "面包和水果"), moreQuestion("服务员什么时候端来食物？", "很快", "第二天", "很晚")],
+  [moreQuestion("Do you ___ bananas?", "like", "likes", "liking", "Do you 后用动词原形 like。"), moreQuestion("山姆的妹妹喜欢什么水果？", "橙子和葡萄", "苹果和香蕉", "草莓和梨"), moreQuestion("他们两人都喜欢什么？", "新鲜蔬菜", "香蕉", "橙子")],
+  [moreQuestion("The blue bag ___ twelve dollars.", "costs", "cost", "costing", "单数主语后用 costs。"), moreQuestion("红色的包多少钱？", "二十美元", "十二美元", "十美元"), moreQuestion("蓝色的包为什么更适合艾米？", "她喜欢而且更便宜", "它更大", "它是免费的")],
+  [moreQuestion("Can I pay ___ card?", "by", "on", "for", "刷卡付款说 pay by card。"), moreQuestion("诺亚买了几个橙子？", "三个", "两个", "一个"), moreQuestion("诺亚如何付款？", "用现金", "刷卡", "没有付款")],
+  [moreQuestion("The cafe is ___ the library.", "opposite", "at opposite", "on opposite", "opposite 可直接接地点。"), moreQuestion("图书馆旁边是什么？", "公园", "学校", "车站"), moreQuestion("叙述者在哪里见朋友？", "咖啡馆", "图书馆", "银行")],
+  [moreQuestion("Turn ___ at the bank.", "right", "near", "straight", "右转说 turn right。"), moreQuestion("游客要去哪里？", "公交站", "博物馆", "咖啡馆"), moreQuestion("车站在什么地方旁边？", "书店", "银行", "公园")],
+  [moreQuestion("Get off ___ the next stop.", "at", "in", "on", "在某站下车说 get off at the stop。"), moreQuestion("伊娃乘什么去市中心？", "公交车", "火车", "出租车"), moreQuestion("一张车票多少钱？", "三美元", "四美元", "两美元")],
+  [moreQuestion("Is breakfast ___?", "included", "include", "including", "询问是否包含早餐说 Is breakfast included?"), moreQuestion("汤姆几点到酒店？", "晚上六点", "早上七点", "中午十二点"), moreQuestion("早餐几点开始？", "早上七点", "晚上六点", "早上九点")],
+  [moreQuestion("What's the weather ___ today?", "like", "likes", "liking", "问天气说 What's the weather like?"), moreQuestion("周一的天气怎样？", "下雨", "晴朗", "下雪"), moreQuestion("利奥和朋友什么时候散步？", "午饭后", "早饭前", "深夜")],
+  [moreQuestion("Can you ___ me?", "help", "helps", "helping", "Can 后用动词原形 help。"), moreQuestion("谁给妮娜的妈妈打电话？", "老师", "同学", "医生"), moreQuestion("妈妈来之前妮娜做了什么？", "喝水并在安静的房间休息", "去购物", "去跑步")],
+  [moreQuestion("I ___ reading now.", "am", "is", "are", "I 后用 am。"), moreQuestion("马克斯等待时正在看什么？", "一条消息", "一本书", "一张地图"), moreQuestion("马克斯的朋友边走边做什么？", "打电话", "读书", "做饭")],
+  [moreQuestion("Nice to ___ you.", "meet", "meets", "meeting", "to 后用动词原形 meet。"), moreQuestion("林在哪里认识米娅？", "书店", "图书馆", "酒店"), moreQuestion("咖啡馆在什么地方旁边？", "图书馆", "车站", "公园")]
+];
+
+if (typeof module !== "undefined") module.exports = { A1_CHAPTERS, A1_UNITS, A1_MORE };

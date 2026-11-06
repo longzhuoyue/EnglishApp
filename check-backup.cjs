@@ -50,13 +50,16 @@ vm.runInContext(fs.readFileSync("backup.js", "utf8"), context);
   assert.equal(reloaded, true);
   assert.equal(JSON.parse(data.get("wordspring-knowledge-v1")).completed.words, 3);
 
-  const a1Course = { ...freshCourse(), completed: [0], review: { 0: { passes: 1, nextAt: 123456789 } }, outputs: { 0: "Good morning!" } };
+  const a1Course = { ...freshCourse(), completed: [0], review: { 0: { passes: 1, nextAt: 123456789 } },
+    outputs: { 0: "Good morning!" }, corrections: { 0: { source: "Good mornin!", corrected: "Good morning!",
+      meaning: "早上好！", reason: "morning 拼写要完整。" } } };
   elements["backup-text"].value = JSON.stringify({ format: "wordspring-backup-v4", notebook: [],
     listening: ["a1"], roleplay: [], knowledge, a1Course });
   elements["backup-import"].onclick();
   assert.equal(JSON.parse(data.get(COURSE_KEY)).completed[0], 0);
   await elements["backup-export"].onclick();
   assert.equal(JSON.parse(elements["backup-text"].value).a1Course.outputs[0], "Good morning!");
+  assert.equal(JSON.parse(elements["backup-text"].value).a1Course.corrections[0].corrected, "Good morning!");
 
   reloaded = false;
   elements["backup-text"].value = JSON.stringify({ format: "wordspring-backup-v2", notebook: [], listening: ["bad"], roleplay: [] });
