@@ -1,12 +1,13 @@
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const vm = require("node:vm");
-const { A1_CHAPTERS, A1_UNITS, A1_MORE } = require("./course-data.js");
+const { A1_CHAPTERS, A1_UNITS, A1_MORE, A1_LISTENING_MORE } = require("./course-data.js");
 const { COURSE_KEY, freshCourse, validCourse } = require("./course.js");
 
 assert.equal(A1_CHAPTERS.length, 6);
 assert.equal(A1_UNITS.length, 24);
 assert.equal(A1_MORE.length, 24);
+assert.equal(A1_LISTENING_MORE.length, 24);
 assert.equal(new Set(A1_UNITS.map(unit => unit.title)).size, 24);
 assert.deepEqual(A1_CHAPTERS.map((_, i) => A1_UNITS.filter(unit => unit.chapter === i).length), [4, 4, 4, 4, 4, 4]);
 for (const [i, unit] of A1_UNITS.entries()) {
@@ -27,6 +28,15 @@ for (const [i, unit] of A1_UNITS.entries()) {
     assert.equal(q.answer, 0, unit.title);
   }
   assert.equal(new Set(unit.dialogue.slice(0, 3).map(line => line[1])).size, 3, unit.title);
+  assert.equal(A1_LISTENING_MORE[i].length, 2, unit.title);
+  const clips = [{ dialogue: unit.dialogue, ...unit.listen }, ...A1_LISTENING_MORE[i]];
+  assert.equal(new Set(clips.map(clip => clip.dialogue.map(line => line[1]).join(" "))).size, 3, unit.title);
+  for (const clip of clips) {
+    assert.ok(clip.dialogue.length >= 2 && clip.prompt, unit.title);
+    assert.ok(clip.dialogue.every(line => line.length === 3 && line[1] && line[2]), unit.title);
+    assert.equal(new Set(clip.options).size, 3, unit.title);
+    assert.ok(Number.isInteger(clip.answer) && clip.answer >= 0 && clip.answer < 3, unit.title);
+  }
 }
 assert.equal(validCourse(freshCourse()), true);
 assert.equal(validCourse({ ...freshCourse(), completed: [24] }), false);
@@ -51,9 +61,10 @@ const lookup = id => ids[id] || ids["course-content"].children.find(el => el.id 
 const values = new Map([["wordspring-ai-settings-v1", JSON.stringify({ passcode: "test-only" })]]);
 let now = 1700000000000;
 let gradeCalls = 0, lastGrade;
+const spoken = [];
 const context = vm.createContext({ document: { getElementById: lookup, createElement: makeElement, createTextNode: text => ({ textContent: text }) },
   localStorage: { getItem: key => values.get(key) || null, setItem: (key, value) => values.set(key, value) },
-  window: { wordSpringNotebook: { save() { return true; } } }, Date: { now: () => now }, speechSynthesis: { cancel() {}, speak() {} },
+  window: { speechSynthesis: true, wordSpringNotebook: { save() { return true; } } }, Date: { now: () => now }, speechSynthesis: { cancel() {}, speak(utterance) { spoken.push(utterance.text); } },
   SpeechSynthesisUtterance: function (text) { this.text = text; }, AbortController, setTimeout, clearTimeout,
   fetch: async (url, options) => { assert.equal(url, "https://wordspring-ai-pages.pages.dev/teach");
     lastGrade = JSON.parse(options.body); gradeCalls++;
@@ -76,10 +87,14 @@ for (let i = 0; i < 24; i++) {
   assert.equal(progress().cursor.unit, i);
   actions.children[0].click();
   for (const [, zh] of unit.words) choose(zh);
-  const listening = [unit.listen,
-    { options: unit.dialogue.slice(0, 3).map(line => line[1]), answer: 0 },
-    { options: [unit.dialogue.at(-1)[1], unit.dialogue[0][1], unit.dialogue[1][1]], answer: 0 }];
-  for (const q of listening) { choose(q.options[q.answer]); actions.children[0].click(); }
+  const listening = [{ dialogue: unit.dialogue, ...unit.listen }, ...A1_LISTENING_MORE[i]];
+  for (const clip of listening) {
+    const play = panel.children.find(el => el.textContent === "♪ 播放这段对话"); assert.ok(play);
+    play.click(); assert.equal(spoken.at(-1), clip.dialogue.map(line => line[1]).join(" "));
+    choose(clip.options[clip.answer]);
+    assert.ok(panel.children.some(el => el.children.length === clip.dialogue.length));
+    actions.children[0].click();
+  }
   for (const q of [unit.grammar, A1_MORE[i][0], unit.review]) { choose(q.options[q.answer]); actions.children[0].click(); }
   for (const q of [unit.reading, ...A1_MORE[i].slice(1)]) { choose(q.options[q.answer]); actions.children[0].click(); }
   const input = panel.children.find(el => el.maxLength === 600);

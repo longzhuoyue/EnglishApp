@@ -71,13 +71,13 @@
     .course-sound { padding: 6px 10px; border-radius: 10px; background: #e8eedc; }
     .course-large { font-size: 32px; font-weight: 800; }
   </style>
-  <script src="./notebook.js?v=20" defer></script>
-  <script src="./listening.js?v=20" defer></script>
-  <script src="./knowledge.js?v=20" defer></script>
-  <script src="./ai-chat.js?v=20" defer></script>
-  <script src="./course-data.js?v=20" defer></script>
-  <script src="./course.js?v=20" defer></script>
-  <script src="./backup.js?v=20" defer></script>
+  <script src="./notebook.js?v=21" defer></script>
+  <script src="./listening.js?v=21" defer></script>
+  <script src="./knowledge.js?v=21" defer></script>
+  <script src="./ai-chat.js?v=21" defer></script>
+  <script src="./course-data.js?v=21" defer></script>
+  <script src="./course.js?v=21" defer></script>
+  <script src="./backup.js?v=21" defer></script>
 </head>
 <body>
   <main class="shell">
@@ -86,7 +86,7 @@
     <p class="sub">每天 30 分钟，听一段、说一句、解决一个问题。</p>
     <section class="ai-card course-card" aria-label="系统课程">
       <p class="kicker">阶段 1 · A1 入门 · 24 单元</p><h2>系统课程</h2>
-      <p>从问候到日常交流，每单元练词汇、3 道听力、3 道语法、3 道阅读，再用 AI 批改表达。</p>
+      <p>从问候到日常交流，每单元听 3 段不同对话，练词汇、语法和阅读，再用 AI 批改表达。</p>
       <p id="course-summary">正在加载课程进度</p><button id="course-open">进入课程 →</button>
     </section>
     <section class="ai-card teacher-card" aria-label="AI 英语老师">
@@ -185,6 +185,6 @@
       <p class="tip" id="listening-position"></p><div class="lesson-panel" id="listening-content"></div>
       <div class="lesson-footer" id="listening-actions"></div></div>
   </section>
-  <script>if ("serviceWorker" in navigator) navigator.serviceWorker.register("./sw.js?v=20").catch(() => {});</script>
+  <script>if ("serviceWorker" in navigator) navigator.serviceWorker.register("./sw.js?v=21").catch(() => {});</script>
 </body>
 </html>

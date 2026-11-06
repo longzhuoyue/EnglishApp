@@ -321,4 +321,109 @@ const A1_MORE = [
   [moreQuestion("Nice to ___ you.", "meet", "meets", "meeting", "to 后用动词原形 meet。"), moreQuestion("林在哪里认识米娅？", "书店", "图书馆", "酒店"), moreQuestion("咖啡馆在什么地方旁边？", "图书馆", "车站", "公园")]
 ];
 
-if (typeof module !== "undefined") module.exports = { A1_CHAPTERS, A1_UNITS, A1_MORE };
+const listeningClip = (lines, prompt, right, wrong1, wrong2) => ({
+  dialogue: lines.map(([en, zh], i) => [i % 2 ? "B" : "A", en, zh]),
+  prompt, options: [right, wrong1, wrong2], answer: 0
+});
+
+// Two new short dialogues for each unit; the original dialogue is the first clip.
+const A1_LISTENING_MORE = [
+  [
+    listeningClip([["Good evening, Mia.", "晚上好，米娅。"], ["Good evening, Ben. How are you?", "晚上好，本。你好吗？"], ["I'm fine, thanks.", "我很好，谢谢。"]], "他们什么时候见面？", "晚上", "早上", "中午"),
+    listeningClip([["I have to go now.", "我现在得走了。"], ["Okay. See you tomorrow!", "好的，明天见！"], ["Goodbye!", "再见！"]], "他们下次什么时候见？", "明天", "今晚", "下周")
+  ],
+  [
+    listeningClip([["Hi, my name is Sam.", "嗨，我叫山姆。"], ["Nice to meet you, Sam. I'm Amy.", "很高兴认识你，山姆。我是艾米。"]], "第二个人叫什么名字？", "Amy", "Sam", "Mia"),
+    listeningClip([["What's your name?", "你叫什么名字？"], ["My name is Anna, but you can call me Ann.", "我叫安娜，你可以叫我安。"], ["Nice to meet you, Ann.", "很高兴认识你，安。"]], "对方希望别人怎么称呼她？", "Ann", "Anna", "Amy")
+  ],
+  [
+    listeningClip([["Where are you from?", "你来自哪里？"], ["I'm from Toronto in Canada.", "我来自加拿大多伦多。"], ["Do you live here now?", "你现在住在这里吗？"]], "第二个人来自哪座城市？", "多伦多", "北京", "伦敦"),
+    listeningClip([["I live in Shenzhen now.", "我现在住在深圳。"], ["Are you from Shenzhen?", "你来自深圳吗？"], ["No, I'm from Chengdu.", "不是，我来自成都。"]], "第一个人来自哪里？", "成都", "深圳", "上海")
+  ],
+  [
+    listeningClip([["Excuse me. Can I borrow your pen?", "打扰一下，我可以借你的笔吗？"], ["Of course. Here you are.", "当然，给你。"], ["Thank you!", "谢谢！"]], "第一个人想借什么？", "一支笔", "一本书", "一把伞"),
+    listeningClip([["I'm sorry I'm late.", "抱歉，我迟到了。"], ["That's okay. Please sit down.", "没关系。请坐。"]], "第一个人为什么道歉？", "迟到了", "弄丢了书", "忘记带钱")
+  ],
+  [
+    listeningClip([["Who is that girl?", "那个女孩是谁？"], ["She's my sister, Lucy.", "她是我妹妹露西。"], ["Is she a student?", "她是学生吗？"]], "露西和第二个人是什么关系？", "姐妹", "母女", "朋友"),
+    listeningClip([["Does your father live here?", "你父亲住在这里吗？"], ["Yes, he lives with my mother and me.", "是的，他和我妈妈及我住在一起。"]], "第二个人和谁住在一起？", "父母", "兄弟", "朋友")
+  ],
+  [
+    listeningClip([["How old is your brother?", "你兄弟几岁？"], ["He is eighteen years old.", "他十八岁。"], ["Is he a student?", "他是学生吗？"]], "这位兄弟几岁？", "十八岁", "十九岁", "二十岁"),
+    listeningClip([["When is your birthday?", "你的生日是什么时候？"], ["It's in July.", "在七月。"], ["Let's have a party then!", "那时我们办个派对吧！"]], "生日在哪个月？", "七月", "六月", "五月")
+  ],
+  [
+    listeningClip([["What is your friend like?", "你的朋友怎么样？"], ["She is funny and kind.", "她有趣又友善。"], ["I'd like to meet her.", "我想认识她。"]], "这位朋友怎么样？", "有趣又友善", "高大又安静", "忙碌又严厉"),
+    listeningClip([["Is your new neighbor tall?", "你的新邻居个子高吗？"], ["Yes, he is tall and quiet.", "是的，他个子高而且安静。"]], "新邻居的性格怎样？", "安静", "吵闹", "害羞")
+  ],
+  [
+    listeningClip([["Is this your blue bag?", "这是你的蓝色包吗？"], ["No, it's Mia's bag. Mine is red.", "不是，这是米娅的包。我的包是红色的。"]], "蓝色的包是谁的？", "米娅的", "第一个人的", "老师的"),
+    listeningClip([["Do you have my keys?", "你拿着我的钥匙吗？"], ["No, but your brother has them.", "没有，但你兄弟拿着。"], ["I'll ask him. Thanks.", "我去问他。谢谢。"]], "钥匙在谁那里？", "兄弟", "第二个人", "米娅")
+  ],
+  [
+    listeningClip([["What time do you get up?", "你几点起床？"], ["I get up at six o'clock.", "我六点起床。"], ["That's early!", "真早！"]], "第二个人几点起床？", "六点", "七点", "八点"),
+    listeningClip([["When do you have dinner?", "你什么时候吃晚饭？"], ["At seven in the evening.", "晚上七点。"], ["I eat at six.", "我六点吃。"]], "第二个人几点吃晚饭？", "晚上七点", "晚上六点", "中午十二点")
+  ],
+  [
+    listeningClip([["Do you eat breakfast every day?", "你每天吃早餐吗？"], ["Yes. I usually eat at eight.", "吃。我通常八点吃。"]], "第二个人通常几点吃早餐？", "八点", "七点", "九点"),
+    listeningClip([["What do you do after work?", "下班后你做什么？"], ["I study English for thirty minutes.", "我学三十分钟英语。"], ["That's a good habit.", "这是个好习惯。"]], "第二个人下班后做什么？", "学英语", "做早饭", "去购物")
+  ],
+  [
+    listeningClip([["Can you swim?", "你会游泳吗？"], ["Yes, I can. I swim every Sunday.", "会。我每周日游泳。"]], "第二个人会做什么？", "游泳", "弹钢琴", "跳舞"),
+    listeningClip([["Do you like books?", "你喜欢书吗？"], ["Yes, I love reading.", "喜欢，我很爱阅读。"], ["What do you read?", "你读什么书？"]], "第二个人喜欢什么？", "阅读", "跑步", "唱歌")
+  ],
+  [
+    listeningClip([["Are you free at four?", "你四点有空吗？"], ["Yes. Let's meet at the park.", "有空。我们在公园见吧。"]], "两人约在哪里见面？", "公园", "图书馆", "车站"),
+    listeningClip([["Can we meet tomorrow?", "我们明天可以见面吗？"], ["I'm busy tomorrow, but I'm free on Sunday.", "我明天忙，但周日有空。"], ["Sunday is good for me.", "周日我也合适。"]], "第二个人哪天有空？", "周日", "明天", "周一")
+  ],
+  [
+    listeningClip([["What would you like to eat?", "您想吃什么？"], ["I'd like some soup and bread, please.", "我想要汤和面包，谢谢。"], ["And a drink?", "还要饮品吗？"]], "客人点了什么食物？", "汤和面包", "米饭和鸡肉", "面条和鱼"),
+    listeningClip([["Can I have the menu, please?", "可以给我菜单吗？"], ["Of course. Here it is.", "当然，给您。"], ["Thank you.", "谢谢。"]], "客人向服务员要什么？", "菜单", "账单", "水")
+  ],
+  [
+    listeningClip([["Do you like bananas?", "你喜欢香蕉吗？"], ["No, I don't. I like apples.", "不喜欢。我喜欢苹果。"]], "第二个人喜欢什么水果？", "苹果", "香蕉", "葡萄"),
+    listeningClip([["What's your favorite food?", "你最喜欢什么食物？"], ["I love chicken and rice.", "我喜欢鸡肉和米饭。"], ["That sounds good.", "听起来不错。"]], "第二个人最喜欢什么？", "鸡肉和米饭", "蔬菜和面条", "苹果和面包")
+  ],
+  [
+    listeningClip([["How much is this green shirt?", "这件绿色衬衫多少钱？"], ["It's twelve dollars.", "十二美元。"], ["I'll take it.", "我买了。"]], "绿色衬衫多少钱？", "十二美元", "十五美元", "二十美元"),
+    listeningClip([["Do you have a cheaper bag?", "有更便宜的包吗？"], ["Yes. This one is ten dollars.", "有。这个十美元。"], ["Great. I like it.", "太好了，我喜欢。"]], "更便宜的包多少钱？", "十美元", "十二美元", "二十美元")
+  ],
+  [
+    listeningClip([["How many apples do you want?", "你想要几个苹果？"], ["Three apples, please.", "三个，谢谢。"], ["Here you are.", "给你。"]], "客人要几个苹果？", "三个", "两个", "一个"),
+    listeningClip([["Can I pay by card?", "我可以刷卡吗？"], ["Sorry, cash only today.", "抱歉，今天只能付现金。"], ["Okay, I have cash.", "好的，我有现金。"]], "今天可以用什么付款？", "现金", "银行卡", "手机支付")
+  ],
+  [
+    listeningClip([["Where is the bank?", "银行在哪里？"], ["It's opposite the school.", "在学校对面。"], ["Thank you.", "谢谢。"]], "银行在哪里？", "学校对面", "公园旁边", "图书馆里"),
+    listeningClip([["Is there a cafe near here?", "附近有咖啡馆吗？"], ["Yes, it's next to the library.", "有，在图书馆旁边。"]], "咖啡馆在哪里？", "图书馆旁边", "银行对面", "公园里")
+  ],
+  [
+    listeningClip([["How do I get to the bank?", "去银行怎么走？"], ["Go straight, then turn right.", "直走，然后右转。"], ["Is it far?", "远吗？"]], "去银行应该往哪里转？", "右转", "左转", "不用转弯"),
+    listeningClip([["Excuse me. Where is the park?", "打扰一下，公园在哪里？"], ["Turn left after the bank.", "过了银行左转。"], ["Thank you for your help.", "谢谢你的帮助。"]], "去公园要在银行后怎么走？", "左转", "右转", "直走到车站")
+  ],
+  [
+    listeningClip([["Does this bus stop at the museum?", "这辆公交车在博物馆停吗？"], ["Yes. Get off at the third stop.", "停。第三站下车。"], ["Thank you, driver.", "谢谢司机。"]], "乘客应该在哪站下车？", "第三站", "下一站", "终点站"),
+    listeningClip([["How much is a train ticket?", "一张火车票多少钱？"], ["It's two dollars.", "两美元。"], ["One ticket, please.", "请给我一张。"]], "一张火车票多少钱？", "两美元", "三美元", "五美元")
+  ],
+  [
+    listeningClip([["Is breakfast included?", "包含早餐吗？"], ["Yes. It starts at eight.", "包含。八点开始。"], ["Thank you.", "谢谢。"]], "早餐几点开始？", "八点", "七点", "九点"),
+    listeningClip([["What is my room number?", "我的房间号码是多少？"], ["Room two oh five. It's on the second floor.", "205 房间，在二楼。"], ["Where is the lift?", "电梯在哪里？"]], "房间在几楼？", "二楼", "一楼", "五楼")
+  ],
+  [
+    listeningClip([["What's the weather like?", "天气怎么样？"], ["It's rainy. Take an umbrella.", "下雨了，带把伞。"], ["Thanks, I will.", "谢谢，我会带的。"]], "出门应该带什么？", "雨伞", "墨镜", "外套"),
+    listeningClip([["It's sunny today.", "今天晴朗。"], ["Great! Let's walk in the park.", "太好了！我们去公园散步吧。"]], "他们计划做什么？", "在公园散步", "在家看书", "坐火车")
+  ],
+  [
+    listeningClip([["You don't look well. What's wrong?", "你看起来不太舒服。怎么了？"], ["I have a headache.", "我头痛。"], ["Please sit down and rest.", "请坐下休息。"]], "第二个人哪里不舒服？", "头痛", "肚子痛", "腿痛"),
+    listeningClip([["I feel very tired.", "我觉得很累。"], ["Do you need some water?", "你需要喝点水吗？"], ["Yes, please. Thank you.", "需要，谢谢。"]], "第一个人感觉怎么样？", "很累", "很饿", "很开心")
+  ],
+  [
+    listeningClip([["What are you doing now?", "你现在在做什么？"], ["I'm waiting for the bus.", "我正在等公交。"], ["Is it coming soon?", "车快来了吗？"]], "第二个人正在做什么？", "等公交", "做晚饭", "读书"),
+    listeningClip([["Are you cooking dinner?", "你正在做晚饭吗？"], ["No, I'm reading a book.", "没有，我正在读书。"], ["I'll call you later.", "我稍后给你打电话。"]], "第二个人正在做什么？", "读书", "做晚饭", "打电话")
+  ],
+  [
+    listeningClip([["Hi, I'm Eva. I'm new here.", "嗨，我是伊娃。我刚来这里。"], ["Nice to meet you. Where are you from?", "很高兴认识你。你来自哪里？"], ["I'm from Beijing.", "我来自北京。"]], "伊娃来自哪里？", "北京", "上海", "伦敦"),
+    listeningClip([["Are you free on Sunday?", "你周日有空吗？"], ["Yes. Let's meet at the library at four.", "有空。我们四点在图书馆见吧。"], ["Great. See you there!", "好，到时见！"]], "他们约在哪里见面？", "图书馆", "咖啡馆", "公园")
+  ]
+];
+
+if (typeof module !== "undefined") module.exports = { A1_CHAPTERS, A1_UNITS, A1_MORE, A1_LISTENING_MORE };

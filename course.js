@@ -58,9 +58,7 @@ function startCourse() {
   const moveStep = next => { step = next; word = 0; question = 0; progress.cursor = { unit, step, word, question }; save(); lesson(); view.scrollTop = 0; };
   const openUnit = i => { unit = i; const cursor = progress.cursor; step = cursor && cursor.unit === i ? cursor.step : 0; word = cursor && cursor.unit === i ? cursor.word : 0; question = cursor && cursor.unit === i ? cursor.question || 0 : 0; progress.cursor = { unit, step, word, question }; save(); screen = "lesson"; lesson(); view.scrollTop = 0; };
   const nextQuestion = nextStep => { if (question === 2) moveStep(nextStep); else { question++; progress.cursor.question = question; save(); lesson(); view.scrollTop = 0; } };
-  const listeningQuestions = item => [item.listen,
-    { prompt: "对话最开始听到哪句话？", options: item.dialogue.slice(0, 3).map(line => line[1]), answer: 0 },
-    { prompt: "对话最后听到哪句话？", options: [item.dialogue[item.dialogue.length - 1][1], item.dialogue[0][1], item.dialogue[1][1]], answer: 0 }];
+  const listeningClips = (item, index) => [{ dialogue: item.dialogue, ...item.listen }, ...A1_LISTENING_MORE[index]];
   const cancelCheck = () => { checkId++; if (checkController) checkController.abort(); checkController = null; checking = false; };
   const showCorrection = result => {
     const old = $("course-correction"); if (old) old.remove();
@@ -144,13 +142,15 @@ function startCourse() {
       const question = { options: [zh, ...distractors], answer: 0 };
       choices(question, unit + word, correct => { if (correct) { if (word === 5) moveStep(2); else { word++; progress.cursor.word = word; save(); lesson(); } } else feedback(`再想一想：${en} 是“${zh}”。`); });
     } else if (step === 2) {
-      const q = listeningQuestions(item)[question];
-      html(`<h2>听一段对话</h2><p>先听英文，再回答 3 道题。可以重复播放。</p><p>${esc(q.prompt)}</p>`);
-      play(item.dialogue.map(line => line[1]).join(" "), "♪ 播放对话");
-      choices(q, unit + question + 2, correct => { if (!correct) return feedback("再听一遍，注意对话中的关键信息。");
-        if (question === 2) { const box = document.createElement("div");
-          item.dialogue.forEach(([who, en, zh]) => { const p = document.createElement("p"); p.className = "dialogue-line"; p.textContent = `${who}: ${en}`; const sm = document.createElement("small"); sm.textContent = zh; p.appendChild(sm); box.appendChild(p); }); panel.appendChild(box); }
-        feedback(question === 2 ? "答对了！下面是对话原文。" : "答对了！继续听下一题。");
+      const clip = listeningClips(item, unit)[question];
+      html(`<h2>第 ${question + 1} 段对话</h2><p>先听英文，再回答这段对话的问题。可以重复播放。</p><p>${esc(clip.prompt)}</p>`);
+      play(clip.dialogue.map(line => line[1]).join(" "), "♪ 播放这段对话");
+      let solved = false;
+      choices(clip, unit + question + 2, correct => { if (solved) return; if (!correct) return feedback("再听一遍，注意对话中的关键信息。");
+        solved = true;
+        const box = document.createElement("div");
+        clip.dialogue.forEach(([who, en, zh]) => { const p = document.createElement("p"); p.className = "dialogue-line"; p.textContent = `${who}: ${en}`; const sm = document.createElement("small"); sm.textContent = zh; p.appendChild(sm); box.appendChild(p); }); panel.appendChild(box);
+        feedback("答对了！下面是这段对话的原文和译文。");
         actions.replaceChildren(); button(question === 2 ? "继续学语法 →" : "下一道听力题 →", () => nextQuestion(3));
       });
     } else if (step === 3) {
