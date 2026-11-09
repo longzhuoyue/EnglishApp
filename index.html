@@ -24,7 +24,12 @@
     .ai-card { margin: 18px 0; padding: 24px; border-radius: 26px; background: #e9efd7; }
     .teacher-card { background: #e5f0ef; }
     .course-card { background: #dff3bc; }
-    .a2-card { background: #dcecf3; }
+    .course-stage-list summary { display: block; padding: 15px; border-radius: 14px; background: #14212d; color: white; text-align: center; font-weight: 750; cursor: pointer; }
+    .course-stage-list summary::-webkit-details-marker { display: none; }
+    .course-stage-list summary:focus-visible { outline: 3px solid #3c6578; outline-offset: 3px; }
+    .stage-card { margin-top: 12px; padding: 18px; border-radius: 18px; background: #f7faef; }
+    .stage-card.a2-card { background: #e8f3f7; }
+    .stage-card h3 { margin: 0; font-size: 20px; }
     .knowledge-card { background: #e8eedc; }
     .notebook-card { background: #e8e8f5; }
     .listening-card { background: #f0e8dc; }
@@ -76,14 +81,14 @@
     .choice[aria-pressed="true"] { border-color: #74942b; background: #eef8d7; }
     .choice:disabled { cursor: default; }
   </style>
-  <script src="./notebook.js?v=22" defer></script>
-  <script src="./listening.js?v=22" defer></script>
-  <script src="./knowledge.js?v=22" defer></script>
-  <script src="./ai-chat.js?v=22" defer></script>
-  <script src="./course-data.js?v=22" defer></script>
-  <script src="./a2-data.js?v=22" defer></script>
-  <script src="./course.js?v=22" defer></script>
-  <script src="./backup.js?v=22" defer></script>
+  <script src="./notebook.js?v=23" defer></script>
+  <script src="./listening.js?v=23" defer></script>
+  <script src="./knowledge.js?v=23" defer></script>
+  <script src="./ai-chat.js?v=23" defer></script>
+  <script src="./course-data.js?v=23" defer></script>
+  <script src="./a2-data.js?v=23" defer></script>
+  <script src="./course.js?v=23" defer></script>
+  <script src="./backup.js?v=23" defer></script>
 </head>
 <body>
   <main class="shell">
@@ -91,14 +96,20 @@
     <h1>每天一点，<br>英语更近一点。</h1>
     <p class="sub">每天 30 分钟，听一段、说一句、解决一个问题。</p>
     <section class="ai-card course-card" aria-label="系统课程">
-      <p class="kicker">阶段 1 · A1 入门 · 24 单元</p><h2>系统课程</h2>
-      <p>从问候到日常交流，每单元听 3 段不同对话，练词汇、语法和阅读，再用 AI 批改表达。</p>
-      <p id="course-summary">正在加载课程进度</p><button id="course-open">进入课程 →</button>
-    </section>
-    <section class="ai-card a2-card" aria-label="A2 基础课程">
-      <p class="kicker">阶段 2 · A2 基础 · 28 单元</p><h2>A2 系统课程</h2>
-      <p>从讲述过去经历到安排未来、解决日常问题，再练习表达观点。</p>
-      <p id="a2-course-summary">正在加载课程进度</p><button id="a2-course-open">进入第二阶段 →</button>
+      <p class="kicker">A1 入门 → A2 基础 · 共 52 单元</p><h2>系统课程</h2>
+      <p>按阶段学习日常英语。每单元先讲知识点，再练词汇、听力、语法、阅读和表达；完成后安排复习与阶段测评。</p>
+      <details class="course-stage-list"><summary>选择学习阶段</summary>
+        <section class="stage-card" aria-label="A1 入门课程">
+          <p class="kicker">阶段 1 · A1 入门 · 24 单元</p><h3>A1 入门</h3>
+          <p>从问候、自我介绍到点餐、问路和日常交流。</p>
+          <p id="course-summary">正在加载课程进度</p><button id="course-open">进入 A1 →</button>
+        </section>
+        <section class="stage-card a2-card" aria-label="A2 基础课程">
+          <p class="kicker">阶段 2 · A2 基础 · 28 单元</p><h3>A2 基础</h3>
+          <p>讲述过去经历、安排未来、解决日常问题并表达观点。</p>
+          <p id="a2-course-summary">正在加载课程进度</p><button id="a2-course-open">进入 A2 →</button>
+        </section>
+      </details>
     </section>
     <section class="ai-card teacher-card" aria-label="AI 英语老师">
       <p class="kicker">提问解答 · 对话纠错</p><h2>AI 英语老师</h2>
@@ -201,6 +212,6 @@
       <p class="tip" id="listening-position"></p><div class="lesson-panel" id="listening-content"></div>
       <div class="lesson-footer" id="listening-actions"></div></div>
   </section>
-  <script>if ("serviceWorker" in navigator) navigator.serviceWorker.register("./sw.js?v=22").catch(() => {});</script>
+  <script>if ("serviceWorker" in navigator) navigator.serviceWorker.register("./sw.js?v=23").catch(() => {});</script>
 </body>
 </html>
