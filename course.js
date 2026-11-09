@@ -1,9 +1,10 @@
 const COURSE_KEY = "wordspring-a1-course-v1";
+const A2_COURSE_KEY = "wordspring-a2-course-v1";
 
-function freshCourse() { return { completed: [], review: {}, cursor: null, outputs: {}, corrections: {}, exam: null }; }
+function freshCourse() { return { completed: [], review: {}, cursor: null, outputs: {}, corrections: {}, answers: {}, examDraft: null, exam: null }; }
 
-function validCourse(value) {
-  const index = n => Number.isInteger(n) && n >= 0 && n < 24;
+function validCourse(value, unitCount = 24, examCount = 12) {
+  const index = n => Number.isInteger(n) && n >= 0 && n < unitCount;
   if (!value || typeof value !== "object" || Array.isArray(value) ||
       !Array.isArray(value.completed) || !value.completed.every(index) ||
       !value.review || typeof value.review !== "object" || Array.isArray(value.review) ||
@@ -19,50 +20,97 @@ function validCourse(value) {
   if (value.corrections !== undefined && (!value.corrections || typeof value.corrections !== "object" || Array.isArray(value.corrections) ||
       !Object.entries(value.corrections).every(([key, result]) => index(Number(key)) && result &&
         ["source", "corrected", "meaning", "reason"].every(field => typeof result[field] === "string" && result[field].length <= 800)))) return false;
+  if (value.answers !== undefined && (!value.answers || typeof value.answers !== "object" || Array.isArray(value.answers) ||
+      !Object.entries(value.answers).every(([key, groups]) => index(Number(key)) && groups &&
+        ["words", "listening", "grammar", "reading"].every(name => groups[name] === undefined ||
+          (Array.isArray(groups[name]) && groups[name].length <= 6 && groups[name].every(answer => answer === true || answer === null)))))) return false;
+  if (value.examDraft !== undefined && value.examDraft !== null && (!value.examDraft ||
+      !Array.isArray(value.examDraft.answers) || value.examDraft.answers.length !== examCount ||
+      !value.examDraft.answers.every(answer => answer === null || Number.isInteger(answer) && answer >= 0 && answer < 3) ||
+      !Number.isInteger(value.examDraft.index) || value.examDraft.index < 0 || value.examDraft.index > examCount ||
+      typeof value.examDraft.writing !== "string" || value.examDraft.writing.length > 600 ||
+      !validCorrection(value.examDraft.correction))) return false;
   return value.exam === null || (value.exam && Number.isInteger(value.exam.score) && value.exam.score >= 0 &&
-    value.exam.score <= 12 && Number.isFinite(value.exam.at) && value.exam.at >= 0);
+    value.exam.score <= examCount && Number.isFinite(value.exam.at) && value.exam.at >= 0 &&
+    (value.exam.wrong === undefined || Array.isArray(value.exam.wrong) && value.exam.wrong.length <= examCount &&
+      value.exam.wrong.every(item => item && Number.isInteger(item.number) && item.number >= 1 && item.number <= examCount &&
+        ["prompt", "selected", "correct", "explanation"].every(field => typeof item[field] === "string" && item[field].length <= 800))) &&
+    (value.exam.writing === undefined || typeof value.exam.writing === "string" && value.exam.writing.length <= 600) &&
+    validCorrection(value.exam.correction));
 }
 
-function startCourse() {
+function validCorrection(value) {
+  return value === undefined || value === null || (value && typeof value === "object" &&
+    ["source", "corrected", "meaning", "reason"].every(field => typeof value[field] === "string" && value[field].length <= 800));
+}
+
+function startCourse(config) {
   const $ = id => document.getElementById(id);
-  const view = $("course-view"), panel = $("course-content"), actions = $("course-actions"), position = $("course-position");
+  const { key, prefix, stage, label, chapters, units, more, clips, examUnits, passScore, examPrompt } = config;
+  const view = $(`${prefix}-view`), panel = $(`${prefix}-content`), actions = $(`${prefix}-actions`), position = $(`${prefix}-position`);
   let progress;
-  try { progress = JSON.parse(localStorage.getItem(COURSE_KEY) || "null"); } catch { /* Corrupt local data falls back to an empty course. */ }
-  if (!validCourse(progress)) progress = freshCourse();
+  try { progress = JSON.parse(localStorage.getItem(key) || "null"); } catch { /* Corrupt local data falls back to an empty course. */ }
+  if (!validCourse(progress, units.length, examUnits.length)) progress = freshCourse();
   if (!progress.corrections) progress.corrections = {};
+  if (!progress.answers) progress.answers = {};
+  if (progress.examDraft === undefined) progress.examDraft = null;
   let screen = "overview", unit = 0, step = 0, word = 0, question = 0, checking = false, checkId = 0, checkController = null;
-  let reviewUnit = 0, reviewQuestion = 0, examQuestion = 0, examScore = 0, examWriting = "";
-  const save = () => { try { localStorage.setItem(COURSE_KEY, JSON.stringify(progress)); } catch { $("course-summary").textContent = "进度保存失败，请检查 Safari 存储空间。"; } };
+  let reviewUnit = 0, reviewQuestion = 0;
+  const save = () => { try { localStorage.setItem(key, JSON.stringify(progress)); } catch { $(`${prefix}-summary`).textContent = "进度保存失败，请检查 Safari 存储空间。"; } };
   const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
   const button = (label, fn, style = "primary") => { const b = document.createElement("button"); b.className = style; b.textContent = label; b.onclick = fn; actions.appendChild(b); return b; };
   const clean = () => { panel.replaceChildren(); actions.replaceChildren(); position.textContent = ""; };
   const html = markup => { panel.innerHTML = markup; };
   const due = i => { const r = progress.review[i]; return r && r.passes < 2 && r.nextAt <= Date.now(); };
-  const dueCount = () => A1_UNITS.filter((_, i) => due(i)).length;
-  const firstUnfinished = () => A1_UNITS.findIndex((_, i) => !progress.completed.includes(i));
-  const summary = () => { $("course-summary").textContent = `${progress.completed.length}/24 单元完成 · ${dueCount()} 个待复习${progress.exam && progress.exam.score >= 10 ? " · 阶段测评通过" : ""}`; };
+  const dueCount = () => units.filter((_, i) => due(i)).length;
+  const firstUnfinished = () => units.findIndex((_, i) => !progress.completed.includes(i));
+  const summary = () => { $(`${prefix}-summary`).textContent = `${progress.completed.length}/${units.length} 单元完成 · ${dueCount()} 个待复习${progress.exam && progress.exam.score >= passScore ? " · 阶段测评通过" : ""}`; };
   const speak = text => {
     if (!("speechSynthesis" in window)) { position.textContent = "这台设备暂不支持朗读。"; return; }
     speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(text); u.lang = "en-US"; u.rate = 0.82; speechSynthesis.speak(u);
   };
   const play = (text, label = "♪ 播放英文") => { const b = document.createElement("button"); b.className = "utility-button"; b.textContent = label; b.onclick = () => speak(text); panel.appendChild(b); };
-  const choices = (question, seed, onAnswer) => {
+  const choices = (question, seed, onAnswer, selected = null, locked = false) => {
     const rotation = seed % question.options.length;
     question.options.forEach((_, display) => {
       const original = (display + rotation) % question.options.length;
       const b = document.createElement("button"); b.className = "choice"; b.textContent = question.options[original];
-      b.onclick = () => onAnswer(original === question.answer, question.options[question.answer]); panel.appendChild(b);
+      if (original === selected) b.setAttribute("aria-pressed", "true");
+      b.disabled = locked;
+      b.onclick = () => onAnswer(original === question.answer, question.options[question.answer], original); panel.appendChild(b);
     });
   };
-  const feedback = text => { let el = $("course-feedback"); if (!el) { el = document.createElement("p"); el.id = "course-feedback"; el.className = "feedback"; panel.appendChild(el); } el.textContent = text; };
-  const moveStep = next => { step = next; word = 0; question = 0; progress.cursor = { unit, step, word, question }; save(); lesson(); view.scrollTop = 0; };
+  const feedback = text => { let el = $(`${prefix}-feedback`); if (!el) { el = document.createElement("p"); el.id = `${prefix}-feedback`; el.className = "feedback"; panel.appendChild(el); } el.textContent = text; };
   const openUnit = i => { unit = i; const cursor = progress.cursor; step = cursor && cursor.unit === i ? cursor.step : 0; word = cursor && cursor.unit === i ? cursor.word : 0; question = cursor && cursor.unit === i ? cursor.question || 0 : 0; progress.cursor = { unit, step, word, question }; save(); screen = "lesson"; lesson(); view.scrollTop = 0; };
-  const nextQuestion = nextStep => { if (question === 2) moveStep(nextStep); else { question++; progress.cursor.question = question; save(); lesson(); view.scrollTop = 0; } };
-  const listeningClips = (item, index) => [{ dialogue: item.dialogue, ...item.listen }, ...A1_LISTENING_MORE[index]];
+  const answerGroups = () => progress.answers[unit] || (progress.answers[unit] = {});
+  const solved = (group, index) => !!(answerGroups()[group] || [])[index];
+  const markSolved = (group, index) => { const groups = answerGroups(); if (!groups[group]) groups[group] = []; groups[group][index] = true; save(); lesson(); };
+  const navigate = delta => {
+    if (step === 5) cancelCheck();
+    if (delta < 0) {
+      if (step === 5) { step = 4; question = 2; }
+      else if (step >= 2 && question > 0) question--;
+      else if (step === 2) { step = 1; word = 5; }
+      else if (step > 2) { step--; question = 2; }
+      else if (step === 1 && word > 0) word--;
+      else if (step === 1) step = 0;
+      else return overview();
+    } else {
+      if (step === 0) { step = 1; word = 0; }
+      else if (step === 1 && word < 5) word++;
+      else if (step === 1) { step = 2; question = 0; }
+      else if (step >= 2 && step <= 4 && question < 2) question++;
+      else if (step >= 2 && step <= 4) { step++; question = 0; }
+    }
+    progress.cursor = { unit, step, word, question }; save(); lesson(); view.scrollTop = 0;
+  };
+  const questionNav = (group, index) => { button("上一题", () => navigate(-1), "secondary");
+    button("下一题", () => navigate(1)).disabled = !solved(group, index); };
+  const listeningClips = (item, index) => [{ dialogue: item.dialogue, ...item.listen }, ...clips[index]];
   const cancelCheck = () => { checkId++; if (checkController) checkController.abort(); checkController = null; checking = false; };
   const showCorrection = result => {
-    const old = $("course-correction"); if (old) old.remove();
-    const box = document.createElement("div"); box.id = "course-correction"; box.className = "dialogue-line";
+    const old = $(`${prefix}-correction`); if (old) old.remove();
+    const box = document.createElement("div"); box.id = `${prefix}-correction`; box.className = "dialogue-line";
     [["上次批改的表达", result.source], ["建议表达", result.corrected], ["中文意思", result.meaning], ["修改原因", result.reason]].forEach(([label, value]) => {
       const p = document.createElement("p"); const strong = document.createElement("strong"); strong.textContent = `${label}：`;
       p.appendChild(strong); p.appendChild(document.createTextNode(value)); box.appendChild(p);
@@ -93,7 +141,7 @@ function startCourse() {
       const response = await fetch("https://wordspring-ai-pages.pages.dev/teach", {
         method: "POST", headers: { "content-type": "application/json", "x-wordspring-passcode": code },
         body: JSON.stringify({ mode: "correct", messages: [
-          { role: "assistant", content: `本单元表达任务：${A1_UNITS[checkedUnit].output.prompt} 请结合任务理解下一句英文。` },
+          { role: "assistant", content: `本单元表达任务：${units[checkedUnit].output.prompt} 请结合任务理解下一句英文。` },
           { role: "user", content: answer }
         ] }), signal: controller.signal
       });
@@ -107,26 +155,56 @@ function startCourse() {
     } catch (error) { if (current === checkId && !view.hidden) feedback(error.name === "AbortError" ? "批改等待超时，答案已保存，可再试一次。" : `${error.message || "网络暂时不可用"}；答案已保存，可再试一次。`); }
     finally { clearTimeout(timeout); if (current === checkId) { checkController = null; checking = false; } }
   };
+  const gradeExamWriting = async input => {
+    if (checking) return;
+    const draft = progress.examDraft, answer = input.value.trim();
+    draft.writing = answer; save();
+    if (answer.length < 20) return feedback("请先写一段英文，再请 AI 老师批改。");
+    if (answer.length > 400) return feedback("AI 批改每次最多 400 字，请缩短后再试。");
+    let code = "";
+    try { code = JSON.parse(localStorage.getItem("wordspring-ai-settings-v1") || "{}").passcode || ""; } catch { /* Settings can be entered again. */ }
+    if (!code) return feedback("请先在“AI 英语老师 → 服务设置”中填写访问口令，也可以先保存写作。");
+    checking = true; const current = ++checkId, controller = new AbortController(); checkController = controller;
+    const timeout = setTimeout(() => controller.abort(), 45000);
+    feedback("AI 老师正在批改写作，请稍等……");
+    try {
+      const response = await fetch("https://wordspring-ai-pages.pages.dev/teach", {
+        method: "POST", headers: { "content-type": "application/json", "x-wordspring-passcode": code },
+        body: JSON.stringify({ mode: "correct", messages: [
+          { role: "assistant", content: `阶段写作任务：${examPrompt} 请结合任务理解下一段英文。` },
+          { role: "user", content: answer }
+        ] }), signal: controller.signal
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "批改服务暂时不可用。");
+      if (current !== checkId || view.hidden || screen !== "exam-writing" || progress.examDraft !== draft) return;
+      if (!["corrected", "meaning", "reason"].every(field => typeof result[field] === "string" && result[field].trim())) throw new Error("AI 批改内容不完整，请再试一次。");
+      draft.correction = { source: answer, corrected: result.corrected, meaning: result.meaning, reason: result.reason };
+      save(); showCorrection(draft.correction); feedback("批改完成。可以修改后再次批改，再提交测评。");
+    } catch (error) { if (current === checkId && !view.hidden) feedback(error.name === "AbortError" ? "批改等待超时，写作已保存，可再试一次。" : `${error.message || "网络暂时不可用"}；写作已保存，可再试一次。`); }
+    finally { clearTimeout(timeout); if (current === checkId) { checkController = null; checking = false; } }
+  };
   const overview = () => {
-    cancelCheck(); screen = "overview"; clean(); summary(); position.textContent = "阶段 1 · A1 入门 · 建议每天 1 单元，约 30 分钟";
-    html(`<h2>系统课程</h2><p>24 单元 · 6 个主题。每天可用约 8 分钟学词句、5 分钟听、5 分钟练语法、5 分钟读、7 分钟开口表达；完成后隔天复习。题目与复习可离线使用，AI 批改需要联网。</p><p class="tip">进度只保存在这台设备，请定期导出备份。完成课程测评是站内学习记录，不等同于正式 CEFR 证书。</p>`);
+    cancelCheck(); screen = "overview"; clean(); summary(); position.textContent = `阶段 ${stage} · ${label} · 建议每天 1 单元，约 30 分钟`;
+    html(`<h2>${esc(label)} 系统课程</h2><p>${units.length} 单元 · ${chapters.length} 个主题。先学知识点，再练词汇、三段听力、语法、阅读和表达；完成后隔天复习。题目与复习可离线使用，AI 批改需要联网。</p><p class="tip">进度只保存在这台设备，请定期导出备份。课程测评是站内学习记录，不等同于正式 CEFR 证书。</p>`);
     const next = firstUnfinished();
     if (next >= 0) button(progress.cursor ? "继续上次学习" : `开始第 ${next + 1} 单元`, () => openUnit(progress.cursor ? progress.cursor.unit : next));
-    if (dueCount()) button(`复习到期单元（${dueCount()}）`, () => openReview(A1_UNITS.findIndex((_, i) => due(i))), "secondary");
-    if (next < 0) button("阶段综合测评", startExam, "primary");
-    A1_CHAPTERS.forEach((name, chapter) => {
+    if (dueCount()) button(`复习到期单元（${dueCount()}）`, () => openReview(units.findIndex((_, i) => due(i))), "secondary");
+    if (next < 0) button(progress.examDraft ? "继续阶段测评" : "阶段综合测评", startExam, "primary");
+    if (progress.exam) button("查看上次测评与错题", renderExamResult, "secondary");
+    chapters.forEach((name, chapter) => {
       const h = document.createElement("h3"); h.textContent = `第 ${chapter + 1} 主题 · ${name}`; panel.appendChild(h);
-      A1_UNITS.forEach((item, i) => { if (item.chapter !== chapter) return;
+      units.forEach((item, i) => { if (item.chapter !== chapter) return;
         const b = document.createElement("button"); b.className = "choice";
         b.textContent = `${String(i + 1).padStart(2, "0")} ${item.title} · ${progress.completed.includes(i) ? due(i) ? "待复习" : "已学" : "未学"}`;
         b.onclick = () => openUnit(i); panel.appendChild(b);
       });
     });
-    if (progress.exam) { const p = document.createElement("p"); p.className = "tip"; p.textContent = `最近测评：${progress.exam.score}/12${progress.exam.score >= 10 ? "，达到站内测评要求" : "，可继续复习再试"}。`; panel.appendChild(p); }
+    if (progress.exam) { const p = document.createElement("p"); p.className = "tip"; p.textContent = `最近测评：${progress.exam.score}/${examUnits.length}${progress.exam.score >= passScore ? "，达到站内测评要求" : "，可继续复习再试"}。`; panel.appendChild(p); }
   };
   const lesson = () => {
-    screen = "lesson"; clean(); const item = A1_UNITS[unit];
-    position.textContent = `第 ${unit + 1}/24 单元 · ${A1_CHAPTERS[item.chapter]} · ${["学词句", "词汇回想", "听力", "语法", "阅读", "表达"][step]}${step >= 2 && step <= 4 ? ` ${question + 1}/3` : ""}`;
+    screen = "lesson"; clean(); const item = units[unit];
+    position.textContent = `第 ${unit + 1}/${units.length} 单元 · ${chapters[item.chapter]} · ${["学词句", "词汇回想", "听力", "语法", "阅读", "表达"][step]}${step >= 2 && step <= 4 ? ` ${question + 1}/3` : ""}`;
     if (step === 0) {
       html(`<h2>${esc(item.title)}</h2><p>${esc(item.goal)}</p><h3>6 个常用词</h3>`);
       item.words.forEach(([en, zh]) => { const p = document.createElement("p"); p.className = "course-word"; p.textContent = `${en} · ${zh}`; panel.appendChild(p);
@@ -135,39 +213,39 @@ function startCourse() {
       const h = document.createElement("h3"); h.textContent = "句型与例句"; panel.appendChild(h);
       const rule = document.createElement("p"); rule.textContent = item.rule; panel.appendChild(rule);
       item.examples.forEach(([en, zh]) => { const p = document.createElement("p"); p.className = "dialogue-line"; p.textContent = en; const small = document.createElement("small"); small.textContent = zh; p.appendChild(small); panel.appendChild(p); });
-      button("开始练习 →", () => moveStep(1));
+      button("开始练习 →", () => navigate(1));
     } else if (step === 1) {
       const [en, zh] = item.words[word]; html(`<h2>这个词是什么意思？</h2><p class="course-large">${esc(en)}</p><p class="tip">第 ${word + 1}/6 词 · 先回想，再选择</p>`); play(en);
       const distractors = item.words.filter((_, i) => i !== word).slice((word + 1) % 3, (word + 1) % 3 + 2).map(pair => pair[1]);
-      const question = { options: [zh, ...distractors], answer: 0 };
-      choices(question, unit + word, correct => { if (correct) { if (word === 5) moveStep(2); else { word++; progress.cursor.word = word; save(); lesson(); } } else feedback(`再想一想：${en} 是“${zh}”。`); });
+      const q = { options: [zh, ...distractors], answer: 0 };
+      choices(q, unit + word, correct => { if (correct) markSolved("words", word); else feedback(`再想一想：${en} 是“${zh}”。`); }, solved("words", word) ? 0 : null, solved("words", word));
+      if (solved("words", word)) feedback(`答对了：${en} 是“${zh}”。`);
+      questionNav("words", word);
     } else if (step === 2) {
       const clip = listeningClips(item, unit)[question];
       html(`<h2>第 ${question + 1} 段对话</h2><p>先听英文，再回答这段对话的问题。可以重复播放。</p><p>${esc(clip.prompt)}</p>`);
       play(clip.dialogue.map(line => line[1]).join(" "), "♪ 播放这段对话");
-      let solved = false;
-      choices(clip, unit + question + 2, correct => { if (solved) return; if (!correct) return feedback("再听一遍，注意对话中的关键信息。");
-        solved = true;
+      choices(clip, unit + question + 2, correct => { if (!correct) return feedback("再听一遍，注意对话中的关键信息。"); markSolved("listening", question);
+      }, solved("listening", question) ? clip.answer : null, solved("listening", question));
+      if (solved("listening", question)) {
         const box = document.createElement("div");
         clip.dialogue.forEach(([who, en, zh]) => { const p = document.createElement("p"); p.className = "dialogue-line"; p.textContent = `${who}: ${en}`; const sm = document.createElement("small"); sm.textContent = zh; p.appendChild(sm); box.appendChild(p); }); panel.appendChild(box);
         feedback("答对了！下面是这段对话的原文和译文。");
-        actions.replaceChildren(); button(question === 2 ? "继续学语法 →" : "下一道听力题 →", () => nextQuestion(3));
-      });
+      }
+      questionNav("listening", question);
     } else if (step === 3) {
-      const q = [item.grammar, A1_MORE[unit][0], item.review][question];
+      const q = [item.grammar, more[unit][0], item.review][question];
       html(`<h2>语法小练习</h2><p>${esc(item.rule)}</p><p>${esc(q.prompt)}</p>`);
-      choices(q, unit + question + 3, correct => { if (!correct) return feedback(`再试一次。${q.why || "回想这一单元的句型。"}`);
-        feedback(`答对了。${q.why || "这个句型用得对。"}`); actions.replaceChildren();
-        button(question === 2 ? "继续阅读 →" : "下一道语法题 →", () => nextQuestion(4));
-      });
+      choices(q, unit + question + 3, correct => { if (correct) markSolved("grammar", question); else feedback(`再试一次。${q.why || "回想这一单元的句型。"}`); }, solved("grammar", question) ? q.answer : null, solved("grammar", question));
+      if (solved("grammar", question)) feedback(`答对了。${q.why || "这个句型用得对。"}`);
+      questionNav("grammar", question);
     } else if (step === 4) {
-      const q = [item.reading, ...A1_MORE[unit].slice(1)][question];
+      const q = [item.reading, ...more[unit].slice(1)][question];
       html(`<h2>阅读理解</h2><p class="dialogue-line">${esc(item.reading.en)}</p><p>${esc(q.prompt)}</p>`);
       play(item.reading.en, "♪ 朗读短文");
-      choices(q, unit + question + 4, correct => { if (!correct) return feedback("再读一遍短文，找出与问题相关的信息。");
-        feedback(question === 2 ? `答对了。参考译文：${item.reading.zh}` : "答对了！继续下一题。");
-        actions.replaceChildren(); button(question === 2 ? "继续表达 →" : "下一道阅读题 →", () => nextQuestion(5));
-      });
+      choices(q, unit + question + 4, correct => { if (correct) markSolved("reading", question); else feedback("再读一遍短文，找出与问题相关的信息。"); }, solved("reading", question) ? q.answer : null, solved("reading", question));
+      if (solved("reading", question)) feedback(`答对了。${question === 2 ? `参考译文：${item.reading.zh}` : "继续下一题。"}`);
+      questionNav("reading", question);
     } else {
       html(`<h2>表达与 AI 纠错</h2><p>${esc(item.output.prompt)}</p><p class="tip">先写或用键盘语音输入，再点“AI 批改纠错”。AI 每次重点纠正一处文字问题，需要联网和现有免费额度；不评发音。断网时可以先保存。</p>`);
       const input = document.createElement("textarea"); input.className = "write-box"; input.maxLength = 600; input.placeholder = "写出你的英文表达"; input.value = progress.outputs[unit] || ""; panel.appendChild(input);
@@ -175,6 +253,7 @@ function startCourse() {
       const sample = document.createElement("p"); sample.className = "dialogue-line"; sample.hidden = true; sample.textContent = `参考：${item.output.sample}`; panel.appendChild(sample);
       const show = document.createElement("button"); show.className = "utility-button"; show.textContent = "查看参考表达"; show.onclick = () => { sample.hidden = false; speak(item.output.sample); }; panel.appendChild(show);
       const prior = progress.corrections[unit]; if (prior) showCorrection(prior);
+      button("上一题", () => navigate(-1), "secondary");
       button("AI 批改纠错", () => gradeExpression(input));
       button("保存并完成", () => { const answer = input.value.trim(); if (answer.length < 5) { feedback("请先写一句英文，再朗读自己的句子。"); return; }
         cancelCheck();
@@ -185,12 +264,12 @@ function startCourse() {
     }
     if (step !== 5) button("返回课程目录", overview, "secondary");
   };
-  const finishUnit = () => { clean(); const item = A1_UNITS[unit]; position.textContent = `第 ${unit + 1} 单元已完成`;
+  const finishUnit = () => { clean(); const item = units[unit]; position.textContent = `第 ${unit + 1} 单元已完成`;
     html(`<h2>完成了：${esc(item.title)}</h2><p>明天回来做第一次复习，再过 3 天做第二次复习。也可以随时重学这个单元。</p><p class="tip">你的表达：${esc(progress.outputs[unit])}</p>`);
     const next = firstUnfinished(); if (next >= 0) button(`学习第 ${next + 1} 单元 →`, () => openUnit(next));
     button("返回课程目录", overview, "secondary"); };
   const openReview = i => { reviewUnit = i; reviewQuestion = 0; screen = "review"; renderReview(); };
-  const renderReview = () => { clean(); const item = A1_UNITS[reviewUnit]; const question = reviewQuestion === 0 ? item.grammar : item.review;
+  const renderReview = () => { clean(); const item = units[reviewUnit]; const question = reviewQuestion === 0 ? item.grammar : item.review;
     position.textContent = `${item.title} · 间隔复习 ${reviewQuestion + 1}/2`;
     html(`<h2>回想后作答</h2><p>${esc(question.prompt)}</p>`);
     choices(question, reviewUnit + reviewQuestion + (progress.review[reviewUnit] || { passes: 0 }).passes + 1, correct => {
@@ -202,29 +281,62 @@ function startCourse() {
     });
     button("返回目录", overview, "secondary");
   };
-  const examUnits = [0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22];
-  const startExam = () => { examQuestion = 0; examScore = 0; examWriting = ""; screen = "exam"; renderExam(); };
-  const renderExam = () => { clean(); position.textContent = `阶段 1 综合测评 · ${examQuestion + 1}/12`;
-    const i = examUnits[examQuestion], item = A1_UNITS[i], q = examQuestion % 2 ? item.grammar : item.review;
-    html(`<h2>${esc(A1_CHAPTERS[item.chapter])}</h2><p>${esc(q.prompt)}</p>`);
-    choices(q, examQuestion + Date.now() % 3, correct => { if (correct) examScore++; examQuestion++;
-      if (examQuestion < 12) renderExam(); else renderExamWriting(); });
-    button("退出测评", overview, "secondary");
+  const examQuestionAt = n => { const item = units[examUnits[n]]; return n % 2 ? item.grammar : item.review; };
+  const startExam = () => { if (!progress.examDraft) progress.examDraft = { answers: Array(examUnits.length).fill(null), index: 0, writing: "" }; save();
+    if (progress.examDraft.index === examUnits.length) renderExamWriting(); else renderExam(); };
+  const renderExam = () => { if (screen === "exam-writing") cancelCheck(); screen = "exam"; clean(); const draft = progress.examDraft, n = draft.index;
+    position.textContent = `阶段 ${stage} 综合测评 · 第 ${n + 1}/${examUnits.length} 题`;
+    const item = units[examUnits[n]], q = examQuestionAt(n);
+    html(`<h2>${esc(chapters[item.chapter])}</h2><p>${esc(q.prompt)}</p><p class="tip">可返回修改答案；交卷后统一计分。</p>`);
+    choices(q, n + 3, (_correct, _answer, selected) => { draft.answers[n] = selected; save(); renderExam(); }, draft.answers[n]);
+    button("上一题", () => { draft.index--; save(); renderExam(); }, "secondary").disabled = n === 0;
+    button(n === examUnits.length - 1 ? "进入写作 →" : "下一题 →", () => { draft.index++; save();
+      if (draft.index === examUnits.length) renderExamWriting(); else renderExam(); });
+    button("退出", overview, "secondary");
   };
-  const renderExamWriting = () => { clean(); position.textContent = "阶段 1 综合测评 · 表达任务";
-    html(`<h2>完成一段日常交流</h2><p>用英文写至少 3 句话：介绍自己，提出见面时间和地点，再表达一个需求。请大声朗读。</p><p class="tip">选择题由系统判分；这段表达需由你对照课程示例自查，系统不会自动评判口语或写作能力。</p>`);
-    const input = document.createElement("textarea"); input.className = "write-box"; input.maxLength = 600; input.placeholder = "Hi, I'm ..."; input.value = examWriting; panel.appendChild(input);
-    button("提交测评", () => { examWriting = input.value.trim(); const sentences = (examWriting.match(/[.!?。！？]/g) || []).length;
-      if (examWriting.length < 40 || sentences < 3) { feedback("请写出至少 3 句英文，并用句号或问号分隔。"); return; }
-      progress.exam = { score: examScore, at: Date.now() }; save(); summary(); clean(); position.textContent = "阶段 1 综合测评结果";
-      html(`<h2>${examScore >= 10 ? "选择题达标" : "继续巩固"}</h2><p>选择题 ${examScore}/12。${examScore >= 10 ? "已达到站内测评的选择题要求。" : "建议复习相关单元后重试。"}</p><p class="dialogue-line">${esc(examWriting)}</p><p class="tip">写作与口语需要对照示例或请老师反馈；此分数不代表完整 A1 能力认证。</p>`);
-      button("返回课程目录", overview); });
-    button("退出测评", overview, "secondary");
+  const renderExamWriting = () => { screen = "exam-writing"; clean(); const draft = progress.examDraft;
+    position.textContent = `阶段 ${stage} 综合测评 · 写作`;
+    html(`<h2>写作任务</h2><p>${esc(examPrompt)}</p><p class="tip">AI 可以批改文字并给出修改建议，不评发音。交卷时只用选择题判定站内测评是否达标。</p>`);
+    const input = document.createElement("textarea"); input.className = "write-box"; input.maxLength = 600; input.placeholder = "在这里写英文"; input.value = draft.writing; panel.appendChild(input);
+    input.oninput = () => { draft.writing = input.value; save(); };
+    if (draft.correction) showCorrection(draft.correction);
+    const missing = draft.answers.map((answer, i) => answer === null ? i + 1 : null).filter(Boolean);
+    if (missing.length) feedback(`未答题号：${missing.join("、")}。可以返回补答。`);
+    button("上一题", () => { draft.index = examUnits.length - 1; save(); renderExam(); }, "secondary");
+    button("AI 批改写作", () => gradeExamWriting(input));
+    button("提交测评", () => { draft.writing = input.value.trim(); save();
+      const unanswered = draft.answers.findIndex(answer => answer === null);
+      if (unanswered >= 0) return feedback(`第 ${unanswered + 1} 题还未作答，请返回完成。`);
+      const sentences = (draft.writing.match(/[.!?。！？]/g) || []).length;
+      if (draft.writing.length < 40 || sentences < 3) return feedback("请写出至少 3 句英文，并用句号或问号分隔。");
+      const wrong = []; let score = 0;
+      draft.answers.forEach((answer, i) => { const q = examQuestionAt(i); if (answer === q.answer) score++; else wrong.push({ number: i + 1,
+        prompt: q.prompt, selected: q.options[answer], correct: q.options[q.answer], explanation: q.why || units[examUnits[i]].rule }); });
+      cancelCheck(); progress.exam = { score, at: Date.now(), wrong, writing: draft.writing, correction: draft.correction || null };
+      progress.examDraft = null; save(); summary(); renderExamResult();
+    });
   };
-  $("course-open").onclick = () => { view.hidden = false; overview(); };
-  $("course-close").onclick = () => { cancelCheck(); view.hidden = true; if ("speechSynthesis" in window) speechSynthesis.cancel(); summary(); };
+  const renderExamResult = () => { screen = "exam-result"; clean(); const result = progress.exam;
+    position.textContent = `阶段 ${stage} 综合测评结果`;
+    html(`<h2>${result.score >= passScore ? "选择题达标" : "继续巩固"}</h2><p>选择题 ${result.score}/${examUnits.length}。</p><p>${result.wrong ? result.wrong.length ? `错题题号：${result.wrong.map(item => item.number).join("、")}` : "选择题全部答对！" : "旧版记录只有总分；重新测评可查看错题。"}</p><p class="tip">写作批改为学习建议，站内达标仅按选择题判定，不代表正式 ${esc(label)} 认证。</p>`);
+    (result.wrong || []).forEach(item => { const p = document.createElement("p"); p.className = "dialogue-line";
+      p.textContent = `第 ${item.number} 题：${item.prompt}\n你的选择：${item.selected}\n正确答案：${item.correct}\n说明：${item.explanation}`; panel.appendChild(p); });
+    if (result.writing) { const p = document.createElement("p"); p.className = "dialogue-line"; p.textContent = `你的写作：${result.writing}`; panel.appendChild(p); }
+    if (result.correction) showCorrection(result.correction);
+    button("返回课程目录", overview);
+    button("重新测评", () => { progress.examDraft = null; startExam(); }, "secondary");
+  };
+  $(`${prefix}-open`).onclick = () => { view.hidden = false; overview(); };
+  $(`${prefix}-close`).onclick = () => { cancelCheck(); view.hidden = true; if ("speechSynthesis" in window) speechSynthesis.cancel(); summary(); };
   summary();
 }
 
-if (typeof document !== "undefined") startCourse();
-if (typeof module !== "undefined") module.exports = { COURSE_KEY, freshCourse, validCourse };
+if (typeof document !== "undefined") {
+  startCourse({ key: COURSE_KEY, prefix: "course", stage: 1, label: "A1 入门", chapters: A1_CHAPTERS, units: A1_UNITS,
+    more: A1_MORE, clips: A1_LISTENING_MORE, examUnits: [0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22], passScore: 10,
+    examPrompt: "用英文写至少 3 句话：介绍自己，提出见面时间和地点，再表达一个需求。请大声朗读。" });
+  startCourse({ key: A2_COURSE_KEY, prefix: "a2-course", stage: 2, label: "A2 基础", chapters: A2_CHAPTERS, units: A2_UNITS,
+    more: A2_MORE, clips: A2_LISTENING_MORE, examUnits: [0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26], passScore: 12,
+    examPrompt: "写 4—5 句英文：讲述一次过去的经历，说明一个未来计划，再给朋友一条建议。请大声朗读。" });
+}
+if (typeof module !== "undefined") module.exports = { COURSE_KEY, A2_COURSE_KEY, freshCourse, validCourse };

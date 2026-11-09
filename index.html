@@ -24,6 +24,7 @@
     .ai-card { margin: 18px 0; padding: 24px; border-radius: 26px; background: #e9efd7; }
     .teacher-card { background: #e5f0ef; }
     .course-card { background: #dff3bc; }
+    .a2-card { background: #dcecf3; }
     .knowledge-card { background: #e8eedc; }
     .notebook-card { background: #e8e8f5; }
     .listening-card { background: #f0e8dc; }
@@ -70,14 +71,19 @@
     .course-word { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 8px 0; padding: 9px 12px; border-radius: 12px; background: #f5f5f0; }
     .course-sound { padding: 6px 10px; border-radius: 10px; background: #e8eedc; }
     .course-large { font-size: 32px; font-weight: 800; }
+    .course-footer { flex-wrap: wrap; }
+    .course-footer button { flex: 1 1 42%; }
+    .choice[aria-pressed="true"] { border-color: #74942b; background: #eef8d7; }
+    .choice:disabled { cursor: default; }
   </style>
-  <script src="./notebook.js?v=21" defer></script>
-  <script src="./listening.js?v=21" defer></script>
-  <script src="./knowledge.js?v=21" defer></script>
-  <script src="./ai-chat.js?v=21" defer></script>
-  <script src="./course-data.js?v=21" defer></script>
-  <script src="./course.js?v=21" defer></script>
-  <script src="./backup.js?v=21" defer></script>
+  <script src="./notebook.js?v=22" defer></script>
+  <script src="./listening.js?v=22" defer></script>
+  <script src="./knowledge.js?v=22" defer></script>
+  <script src="./ai-chat.js?v=22" defer></script>
+  <script src="./course-data.js?v=22" defer></script>
+  <script src="./a2-data.js?v=22" defer></script>
+  <script src="./course.js?v=22" defer></script>
+  <script src="./backup.js?v=22" defer></script>
 </head>
 <body>
   <main class="shell">
@@ -88,6 +94,11 @@
       <p class="kicker">阶段 1 · A1 入门 · 24 单元</p><h2>系统课程</h2>
       <p>从问候到日常交流，每单元听 3 段不同对话，练词汇、语法和阅读，再用 AI 批改表达。</p>
       <p id="course-summary">正在加载课程进度</p><button id="course-open">进入课程 →</button>
+    </section>
+    <section class="ai-card a2-card" aria-label="A2 基础课程">
+      <p class="kicker">阶段 2 · A2 基础 · 28 单元</p><h2>A2 系统课程</h2>
+      <p>从讲述过去经历到安排未来、解决日常问题，再练习表达观点。</p>
+      <p id="a2-course-summary">正在加载课程进度</p><button id="a2-course-open">进入第二阶段 →</button>
     </section>
     <section class="ai-card teacher-card" aria-label="AI 英语老师">
       <p class="kicker">提问解答 · 对话纠错</p><h2>AI 英语老师</h2>
@@ -123,7 +134,7 @@
       <p id="notebook-summary">正在加载错句</p><button id="notebook-open">打开错句本 →</button>
     </section>
     <details class="backup"><summary>学习进度备份</summary><div class="backup-content">
-      <p>备份包含系统课程、知识学习、错句本、听力和任务对话进度。导出后请复制保存；恢复时粘贴备份文本再点击导入。</p>
+      <p>备份包含 A1、A2 课程、知识学习、错句本、听力和任务对话进度。导出后请复制保存；恢复时粘贴备份文本再点击导入。</p>
       <textarea id="backup-text" aria-label="进度备份文本"></textarea>
       <div class="backup-actions"><button id="backup-export">导出并复制</button><button id="backup-import">导入备份</button></div>
       <p id="backup-message" role="status"></p>
@@ -171,7 +182,12 @@
   <section class="overlay" id="course-view" aria-label="系统课程" hidden>
     <div class="overlay-inner"><div class="overlay-top"><strong>系统课程 · 阶段 1</strong><button id="course-close">关闭</button></div>
       <p class="tip" id="course-position" role="status"></p><div class="lesson-panel" id="course-content"></div>
-      <div class="lesson-footer" id="course-actions"></div></div>
+      <div class="lesson-footer course-footer" id="course-actions"></div></div>
+  </section>
+  <section class="overlay" id="a2-course-view" aria-label="A2 基础课程" hidden>
+    <div class="overlay-inner"><div class="overlay-top"><strong>系统课程 · 阶段 2</strong><button id="a2-course-close">关闭</button></div>
+      <p class="tip" id="a2-course-position" role="status"></p><div class="lesson-panel" id="a2-course-content"></div>
+      <div class="lesson-footer course-footer" id="a2-course-actions"></div></div>
   </section>
 
   <section class="overlay" id="notebook-view" aria-label="我的错句本" hidden>
@@ -185,6 +201,6 @@
       <p class="tip" id="listening-position"></p><div class="lesson-panel" id="listening-content"></div>
       <div class="lesson-footer" id="listening-actions"></div></div>
   </section>
-  <script>if ("serviceWorker" in navigator) navigator.serviceWorker.register("./sw.js?v=21").catch(() => {});</script>
+  <script>if ("serviceWorker" in navigator) navigator.serviceWorker.register("./sw.js?v=22").catch(() => {});</script>
 </body>
 </html>
