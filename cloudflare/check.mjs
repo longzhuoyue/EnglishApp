@@ -303,15 +303,19 @@ const courseRequest = (level = "b1") => post("/course", JSON.stringify({ level, 
   rule: "明确比较维度，并说明理由。" }));
 let courseCalls = 0;
 const courseEnv = { ...env, AI: { async run(model, input) { courseCalls++;
-  assert.equal(model, courseCalls === 1 ? "@cf/zai-org/glm-4.7-flash" : "@cf/meta/llama-3.3-70b-instruct-fp8-fast");
+  assert.equal(model, courseCalls === 2 ? "@cf/zai-org/glm-4.7-flash" : "@cf/meta/llama-3.3-70b-instruct-fp8-fast");
   assert.equal(input.response_format.type, "json_schema");
-  return courseCalls === 1 ? { choices: [{ message: { content: JSON.stringify(coursePack) } }] } :
-    { response: { valid: true, reason: "No clear errors." } };
+  if (courseCalls === 1) { const { reading, ...main } = coursePack; return { response: main }; }
+  if (courseCalls === 2) return { choices: [{ message: { content: JSON.stringify({
+    lines: Array(8).fill({ en: "The team compared several choices and explained the reasons before making a careful decision.",
+      zh: "团队比较了几个方案，说明了理由，然后谨慎做出决定。" }), questions: coursePack.reading.questions
+  }) } }] };
+  return { response: { valid: true, reason: "No clear errors." } };
 } } };
 const courseResponse = await handleRequest(courseRequest(), courseEnv);
 assert.equal(courseResponse.status, 200);
 assert.equal((await courseResponse.json()).clips.length, 3);
-assert.equal(courseCalls, 2);
+assert.equal(courseCalls, 3);
 assert.equal((await handleRequest(courseRequest("a1"), courseEnv)).status, 400);
 const speech = await handleRequest(post("/transcribe", new Uint8Array([1, 2, 3]), "audio/mp4"), env);
 assert.equal((await speech.json()).transcript, "我想点一杯咖啡。你今天怎么样？学习英语很有趣。");

@@ -8,6 +8,7 @@ function validAdvancedPack(pack) {
   const pair = item => item && typeof item.en === "string" && typeof item.zh === "string";
   return pack && typeof pack === "object" && JSON.stringify(pack).length <= 14000 &&
     Array.isArray(pack.words) && pack.words.length === 6 && pack.words.every(pair) &&
+    new Set(pack.words.map(item => item.zh.trim())).size >= 3 &&
     Array.isArray(pack.examples) && pack.examples.length === 2 && pack.examples.every(pair) &&
     Array.isArray(pack.clips) && pack.clips.length === 3 && pack.clips.every(clip =>
       clip && ["a", "aZh", "b", "bZh"].every(key => typeof clip[key] === "string") && question(clip)) &&
@@ -281,8 +282,9 @@ function startCourse(config) {
       button("开始练习 →", () => navigate(1));
     } else if (step === 1) {
       const [en, zh] = item.words[word]; html(`<h2>这个词是什么意思？</h2><p class="course-large">${esc(en)}</p><p class="tip">第 ${word + 1}/6 词 · 先回想，再选择</p>`); play(en);
-      const distractors = item.words.filter((_, i) => i !== word).slice((word + 1) % 3, (word + 1) % 3 + 2).map(pair => pair[1]);
-      const q = { options: [zh, ...distractors], answer: 0 };
+      const distractors = [...new Set(item.words.filter((pair, i) => i !== word && pair[1] !== zh).map(pair => pair[1]))];
+      const offset = (word + 1) % distractors.length;
+      const q = { options: [zh, distractors[offset], distractors[(offset + 1) % distractors.length]], answer: 0 };
       choices(q, unit + word, correct => { if (correct) markSolved("words", word); else feedback(`再想一想：${en} 是“${zh}”。`); }, solved("words", word) ? 0 : null, solved("words", word));
       if (solved("words", word)) feedback(`答对了：${en} 是“${zh}”。`);
       questionNav("words", word);
