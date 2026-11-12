@@ -3,7 +3,8 @@ const fs = require("node:fs");
 const vm = require("node:vm");
 const { A1_CHAPTERS, A1_UNITS, A1_MORE, A1_LISTENING_MORE } = require("./course-data.js");
 const { A2_CHAPTERS, A2_UNITS, A2_MORE, A2_LISTENING_MORE } = require("./a2-data.js");
-const { COURSE_KEY, A2_COURSE_KEY, freshCourse, validCourse } = require("./course.js");
+const { ADVANCED_STAGES } = require("./advanced-data.js");
+const { COURSE_KEY, A2_COURSE_KEY, ADVANCED_COURSE_KEYS, freshCourse, validCourse, validAdvancedPack } = require("./course.js");
 
 const stages = [
   { prefix: "course", key: COURSE_KEY, chapters: A1_CHAPTERS, units: A1_UNITS, more: A1_MORE, clips: A1_LISTENING_MORE, examCount: 12 },
@@ -38,6 +39,24 @@ assert.equal(validCourse({ ...freshCourse(), completed: [24] }), false);
 const legacy = { ...freshCourse(), completed: [0], cursor: { unit: 1, step: 3, word: 0 }, exam: { score: 11, at: 1700000000000 } };
 delete legacy.answers; delete legacy.examDraft; delete legacy.corrections;
 assert.equal(validCourse(legacy), true);
+assert.deepEqual(ADVANCED_STAGES.map(stage => stage.units.length), [32, 36, 40, 44]);
+for (const stage of ADVANCED_STAGES) {
+  assert.equal(stage.units.length, stage.chapters.length * 4);
+  assert.equal(new Set(stage.units.map(unit => unit.title)).size, stage.units.length);
+  assert.ok(stage.units.every(unit => unit.goal && unit.rule));
+  assert.equal(validCourse(freshCourse(), stage.units.length, stage.units.length / 2), true);
+}
+
+const sampleUnit = A2_UNITS[0], sampleClips = [{ dialogue: sampleUnit.dialogue, ...sampleUnit.listen }, ...A2_LISTENING_MORE[0]];
+const samplePack = { words: sampleUnit.words.map(([en, zh]) => ({ en, zh })),
+  examples: sampleUnit.examples.map(([en, zh]) => ({ en, zh })),
+  clips: sampleClips.map(clip => ({ a: clip.dialogue[0][1], aZh: clip.dialogue[0][2],
+    b: clip.dialogue[1][1], bZh: clip.dialogue[1][2], prompt: clip.prompt, options: clip.options, answer: clip.answer })),
+  grammar: [sampleUnit.grammar, A2_MORE[0][0], sampleUnit.review],
+  reading: { en: sampleUnit.reading.en, zh: sampleUnit.reading.zh,
+    questions: [sampleUnit.reading, ...A2_MORE[0].slice(1)].map(q => ({ prompt: q.prompt, options: q.options, answer: q.answer })) },
+  output: sampleUnit.output };
+assert.equal(validAdvancedPack(samplePack), true);
 
 const html = fs.readFileSync("index.html", "utf8");
 const makeElement = () => {
@@ -55,20 +74,25 @@ const makeElement = () => {
 const ids = Object.fromEntries([...html.matchAll(/id="([^"]+)"/g)].map(match => [match[1], makeElement()]));
 const lookup = id => ids[id] || ["course-content", "a2-course-content"].flatMap(key => ids[key].children).find(el => el.id === id) || null;
 const values = new Map([["wordspring-ai-settings-v1", JSON.stringify({ passcode: "test-only" })]]);
-let now = 1700000000000, lastGrade, gradeCalls = 0;
+let now = 1700000000000, lastGrade, gradeCalls = 0, courseCalls = 0;
 const spoken = [];
 const context = vm.createContext({ document: { getElementById: lookup, createElement: makeElement, createTextNode: text => ({ textContent: text }) },
   localStorage: { getItem: key => values.get(key) || null, setItem: (key, value) => values.set(key, value) },
   window: { speechSynthesis: true, wordSpringNotebook: { save() { return true; } } }, Date: { now: () => now },
   speechSynthesis: { cancel() {}, speak(utterance) { spoken.push(utterance.text); } },
   SpeechSynthesisUtterance: function (text) { this.text = text; }, AbortController, setTimeout, clearTimeout,
-  fetch: async (url, options) => { assert.equal(url, "https://wordspring-ai-pages.pages.dev/teach");
+  fetch: async (url, options) => { if (url.endsWith("/course")) {
+      courseCalls++; assert.ok(ADVANCED_STAGES.some(stage => stage.code === JSON.parse(options.body).level));
+      return { ok: true, json: async () => samplePack };
+    }
+    assert.equal(url, "https://wordspring-ai-pages.pages.dev/teach");
     lastGrade = JSON.parse(options.body); gradeCalls++;
     return gradeCalls === 2 ? { ok: false, json: async () => ({ error: "测试失败" }) } :
       { ok: true, json: async () => ({ corrected: "Hello! See you later.", meaning: "你好！回头见。",
         reason: "问候时用 Hello。", reply: "How are you?", hint: "你好吗？" }) }; } });
 vm.runInContext(fs.readFileSync("course-data.js", "utf8"), context);
 vm.runInContext(fs.readFileSync("a2-data.js", "utf8"), context);
+vm.runInContext(fs.readFileSync("advanced-data.js", "utf8"), context);
 vm.runInContext(fs.readFileSync("course.js", "utf8"), context);
 
 const getProgress = key => JSON.parse(values.get(key));
@@ -153,5 +177,18 @@ const clickAction = (actions, label) => { const b = actions.children.find(el => 
     assert.equal(getProgress(key).review[0].passes, 1);
     ids[`${prefix}-close`].click(); assert.equal(ids[`${prefix}-view`].hidden, true);
   }
-  console.log("WordSpring A1 and A2 course checks passed");
+  for (const [index, stage] of ADVANCED_STAGES.entries()) {
+    const prefix = `${stage.code}-course`, key = ADVANCED_COURSE_KEYS[index], actions = ids[`${prefix}-actions`];
+    ids[`${prefix}-open`].click();
+    await actions.children[0].click();
+    assert.equal(courseCalls, index + 1);
+    assert.equal(getProgress(key).cursor.unit, 0);
+    assert.ok(validAdvancedPack(getProgress(key).packs[0]));
+    ids[`${prefix}-close`].click();
+    ids[`${prefix}-open`].click();
+    await actions.children[0].click();
+    assert.equal(courseCalls, index + 1, "已保存单元不应再次生成");
+    ids[`${prefix}-close`].click();
+  }
+  console.log("WordSpring six-stage course checks passed");
 })().catch(error => { console.error(error); process.exitCode = 1; });

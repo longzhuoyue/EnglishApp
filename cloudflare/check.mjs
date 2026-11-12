@@ -278,6 +278,41 @@ const fallback = await (await handleRequest(post("/roleplay", roleplayBody(1)), 
 assert.equal(fallback.hint, "你想要多大杯？");
 assert.equal(fallback.finished, false);
 assert.equal((await handleRequest(post("/roleplay", JSON.stringify({ scene: "other", turn: 1, messages: [{ role: "user", content: "Hello" }] })), roleplayEnv)).status, 400);
+const coursePack = {
+  words: ["adapt", "assess", "compare", "clarify", "evaluate", "respond"].map((en, i) =>
+    ({ en, zh: ["适应", "评估", "比较", "澄清", "评价", "回应"][i] })),
+  examples: [{ en: "We need to assess the plan before Friday.", zh: "我们需要在周五前评估计划。" },
+    { en: "A clear response can prevent confusion.", zh: "清楚的回应能避免误解。" }],
+  clips: ["train", "meeting", "report"].map((topic, i) => ({
+    a: `What happened to the ${topic}?`, aZh: `那个${["火车", "会议", "报告"][i]}怎么了？`,
+    b: `We need to review the ${topic} tomorrow.`, bZh: `我们明天需要检查${["火车", "会议", "报告"][i]}。`,
+    prompt: `他们什么时候检查${["火车", "会议", "报告"][i]}？`, options: ["明天", "今天", "下周"], answer: 0
+  })),
+  grammar: ["assess", "compare", "clarify"].map(word => ({
+    prompt: `We should ___ the ${word} result before deciding.`, options: [word, `${word}ed`, `${word}ing`], answer: 0,
+    why: "情态动词后用动词原形。"
+  })),
+  reading: { en: Array(11).fill("The team compared several choices and explained the reasons before making a careful decision.").join(" "),
+    zh: "团队比较了几个方案，说明了理由，然后谨慎做出决定。",
+    questions: ["谁比较了方案？", "他们比较了什么？", "他们何时做决定？"].map((prompt, i) => ({
+      prompt, options: [["团队", "游客", "学生"], ["方案", "车票", "菜单"], ["说明理由后", "比较前", "上周"]][i], answer: 0
+    })) },
+  output: { prompt: "解释一个决定以及你的理由。", sample: "We compared several options before deciding. This plan is the most practical." }
+};
+const courseRequest = (level = "b1") => post("/course", JSON.stringify({ level, sequence: 0, title: "比较方案", goal: "比较不同方案",
+  rule: "明确比较维度，并说明理由。" }));
+let courseCalls = 0;
+const courseEnv = { ...env, AI: { async run(model, input) { courseCalls++;
+  assert.equal(model, courseCalls === 1 ? "@cf/zai-org/glm-4.7-flash" : "@cf/meta/llama-3.3-70b-instruct-fp8-fast");
+  assert.equal(input.response_format.type, "json_schema");
+  return courseCalls === 1 ? { choices: [{ message: { content: JSON.stringify(coursePack) } }] } :
+    { response: { valid: true, reason: "No clear errors." } };
+} } };
+const courseResponse = await handleRequest(courseRequest(), courseEnv);
+assert.equal(courseResponse.status, 200);
+assert.equal((await courseResponse.json()).clips.length, 3);
+assert.equal(courseCalls, 2);
+assert.equal((await handleRequest(courseRequest("a1"), courseEnv)).status, 400);
 const speech = await handleRequest(post("/transcribe", new Uint8Array([1, 2, 3]), "audio/mp4"), env);
 assert.equal((await speech.json()).transcript, "我想点一杯咖啡。你今天怎么样？学习英语很有趣。");
 assert.equal(calls[1].input.audio.length, 3);

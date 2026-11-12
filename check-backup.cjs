@@ -5,7 +5,8 @@ const { validNotebook } = require("./notebook.js");
 const { validListening } = require("./listening.js");
 const { validRoleplayProgress } = require("./ai-chat.js");
 const { validKnowledge, freshKnowledge } = require("./knowledge.js");
-const { COURSE_KEY, A2_COURSE_KEY, validCourse, freshCourse } = require("./course.js");
+const { ADVANCED_STAGES } = require("./advanced-data.js");
+const { COURSE_KEY, A2_COURSE_KEY, ADVANCED_COURSE_KEYS, validCourse, freshCourse } = require("./course.js");
 
 const html = fs.readFileSync("index.html", "utf8");
 const elements = Object.fromEntries([...html.matchAll(/id="([^"]+)"/g)].map(match => [match[1], { value: "", textContent: "", select() {} }]));
@@ -20,19 +21,21 @@ const context = vm.createContext({ document: { getElementById: id => elements[id
   navigator: { clipboard: { async writeText() {} } }, location: { reload() { reloaded = true; } },
   confirm: () => true, NOTEBOOK_KEY: "wordspring-notebook-v1", LISTENING_KEY: "wordspring-listening-v1",
   ROLEPLAY_KEY: "wordspring-roleplay-v1", KNOWLEDGE_KEY: "wordspring-knowledge-v1",
-  COURSE_KEY, A2_COURSE_KEY, validNotebook, validListening, validRoleplayProgress, validKnowledge, freshKnowledge,
+  COURSE_KEY, A2_COURSE_KEY, ADVANCED_COURSE_KEYS, ADVANCED_STAGES,
+  validNotebook, validListening, validRoleplayProgress, validKnowledge, freshKnowledge,
   validCourse, freshCourse });
 vm.runInContext(fs.readFileSync("backup.js", "utf8"), context);
 
 (async () => {
   await elements["backup-export"].onclick();
   const exported = JSON.parse(elements["backup-text"].value);
-  assert.equal(exported.format, "wordspring-backup-v5");
+  assert.equal(exported.format, "wordspring-backup-v6");
   assert.equal(exported.listening[0], "a1");
   assert.equal(exported.knowledge.completed.words, 2);
   assert.equal("course" in exported, false);
   assert.deepEqual(exported.a1Course, freshCourse());
   assert.equal(exported.a2Course.completed[0], 0);
+  assert.equal(exported.advancedCourses.length, 4);
   assert.equal("passcode" in exported, false);
 
   elements["backup-text"].value = JSON.stringify({ format: "wordspring-backup-v1", course: {}, wordReviews: {},
@@ -69,6 +72,14 @@ vm.runInContext(fs.readFileSync("backup.js", "utf8"), context);
     listening: ["a1"], roleplay: [], knowledge, a1Course, a2Course });
   elements["backup-import"].onclick();
   assert.equal(JSON.parse(data.get(A2_COURSE_KEY)).completed.length, 2);
+  const advancedCourses = ADVANCED_STAGES.map(() => freshCourse());
+  advancedCourses[0].completed = [0];
+  elements["backup-text"].value = JSON.stringify({ format: "wordspring-backup-v6", notebook: [],
+    listening: ["a1"], roleplay: [], knowledge, a1Course, a2Course, advancedCourses });
+  elements["backup-import"].onclick();
+  assert.equal(JSON.parse(data.get(ADVANCED_COURSE_KEYS[0])).completed[0], 0);
+  await elements["backup-export"].onclick();
+  assert.equal(JSON.parse(elements["backup-text"].value).advancedCourses[0].completed[0], 0);
 
   reloaded = false;
   elements["backup-text"].value = JSON.stringify({ format: "wordspring-backup-v2", notebook: [], listening: ["bad"], roleplay: [] });
@@ -77,5 +88,6 @@ vm.runInContext(fs.readFileSync("backup.js", "utf8"), context);
   assert.equal(JSON.parse(data.get("wordspring-listening-v1"))[0], "a1");
   assert.equal(JSON.parse(data.get(COURSE_KEY)).review[0].passes, 1);
   assert.equal(JSON.parse(data.get(A2_COURSE_KEY)).outputs[0], "I went to the market.");
+  assert.equal(JSON.parse(data.get(ADVANCED_COURSE_KEYS[0])).completed[0], 0);
   console.log("WordSpring backup checks passed");
 })().catch(error => { console.error(error); process.exitCode = 1; });

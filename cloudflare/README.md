@@ -1,6 +1,6 @@
 # 免费 AI 对话服务
 
-本目录是 WordSpring 的 Cloudflare Worker。GitHub Pages 仍托管原网页，Worker 处理知识学习、AI 对话、英语老师、任务对话、实时分级听力、中英翻译和短录音转文字。对话、提问、翻译内容和录音会发送至 Cloudflare。访问口令保存为 Worker Secret，不写进公开仓库；手机端仅把口令存在本机 Safari 网站数据中，不随学习进度备份导出。
+本目录是 WordSpring 的 Cloudflare Worker。GitHub Pages 仍托管原网页，Worker 处理高阶课程首次出题、知识学习、AI 对话、英语老师、任务对话、实时分级听力、中英翻译和短录音转文字。对话、提问、翻译内容和录音会发送至 Cloudflare。访问口令保存为 Worker Secret，不写进公开仓库；手机端仅把口令存在本机 Safari 网站数据中，不随学习进度备份导出。
 
 语音识别模型有时返回繁体字。Worker 使用 OpenCC 在返回识别文字前转换为中国大陆简体中文；部署前在本目录运行 `pnpm install` 安装锁定版本的依赖。
 

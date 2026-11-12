@@ -1,5 +1,21 @@
 const COURSE_KEY = "wordspring-a1-course-v1";
 const A2_COURSE_KEY = "wordspring-a2-course-v1";
+const ADVANCED_COURSE_KEYS = ["b1", "b2", "c1", "c2"].map(code => `wordspring-${code}-course-v1`);
+
+function validAdvancedPack(pack) {
+  const question = q => q && typeof q.prompt === "string" && Array.isArray(q.options) && q.options.length === 3 &&
+    q.options.every(value => typeof value === "string") && Number.isInteger(q.answer) && q.answer >= 0 && q.answer < 3;
+  const pair = item => item && typeof item.en === "string" && typeof item.zh === "string";
+  return pack && typeof pack === "object" && JSON.stringify(pack).length <= 14000 &&
+    Array.isArray(pack.words) && pack.words.length === 6 && pack.words.every(pair) &&
+    Array.isArray(pack.examples) && pack.examples.length === 2 && pack.examples.every(pair) &&
+    Array.isArray(pack.clips) && pack.clips.length === 3 && pack.clips.every(clip =>
+      clip && ["a", "aZh", "b", "bZh"].every(key => typeof clip[key] === "string") && question(clip)) &&
+    Array.isArray(pack.grammar) && pack.grammar.length === 3 && pack.grammar.every(question) &&
+    pack.reading && typeof pack.reading.en === "string" && typeof pack.reading.zh === "string" &&
+    Array.isArray(pack.reading.questions) && pack.reading.questions.length === 3 && pack.reading.questions.every(question) &&
+    pack.output && typeof pack.output.prompt === "string" && typeof pack.output.sample === "string";
+}
 
 function freshCourse() { return { completed: [], review: {}, cursor: null, outputs: {}, corrections: {}, answers: {}, examDraft: null, exam: null }; }
 
@@ -24,6 +40,8 @@ function validCourse(value, unitCount = 24, examCount = 12) {
       !Object.entries(value.answers).every(([key, groups]) => index(Number(key)) && groups &&
         ["words", "listening", "grammar", "reading"].every(name => groups[name] === undefined ||
           (Array.isArray(groups[name]) && groups[name].length <= 6 && groups[name].every(answer => answer === true || answer === null)))))) return false;
+  if (value.packs !== undefined && (unitCount <= 28 || !value.packs || typeof value.packs !== "object" ||
+      Array.isArray(value.packs) || !Object.entries(value.packs).every(([key, pack]) => index(Number(key)) && validAdvancedPack(pack)))) return false;
   if (value.examDraft !== undefined && value.examDraft !== null && (!value.examDraft ||
       !Array.isArray(value.examDraft.answers) || value.examDraft.answers.length !== examCount ||
       !value.examDraft.answers.every(answer => answer === null || Number.isInteger(answer) && answer >= 0 && answer < 3) ||
@@ -46,7 +64,8 @@ function validCorrection(value) {
 
 function startCourse(config) {
   const $ = id => document.getElementById(id);
-  const { key, prefix, stage, label, chapters, units, more, clips, examUnits, passScore, examPrompt } = config;
+  const { key, prefix, stage, label, chapters, examUnits, passScore, examPrompt } = config;
+  const units = config.units.slice(), more = (config.more || []).slice(), clips = (config.clips || []).slice();
   const view = $(`${prefix}-view`), panel = $(`${prefix}-content`), actions = $(`${prefix}-actions`), position = $(`${prefix}-position`);
   let progress;
   try { progress = JSON.parse(localStorage.getItem(key) || "null"); } catch { /* Corrupt local data falls back to an empty course. */ }
@@ -54,6 +73,7 @@ function startCourse(config) {
   if (!progress.corrections) progress.corrections = {};
   if (!progress.answers) progress.answers = {};
   if (progress.examDraft === undefined) progress.examDraft = null;
+  if (config.dynamic && (!progress.packs || typeof progress.packs !== "object" || Array.isArray(progress.packs))) progress.packs = {};
   let screen = "overview", unit = 0, step = 0, word = 0, question = 0, checking = false, checkId = 0, checkController = null;
   let reviewUnit = 0, reviewQuestion = 0;
   const save = () => { try { localStorage.setItem(key, JSON.stringify(progress)); } catch { $(`${prefix}-summary`).textContent = "进度保存失败，请检查 Safari 存储空间。"; } };
@@ -81,7 +101,52 @@ function startCourse(config) {
     });
   };
   const feedback = text => { let el = $(`${prefix}-feedback`); if (!el) { el = document.createElement("p"); el.id = `${prefix}-feedback`; el.className = "feedback"; panel.appendChild(el); } el.textContent = text; };
-  const openUnit = i => { unit = i; const cursor = progress.cursor; step = cursor && cursor.unit === i ? cursor.step : 0; word = cursor && cursor.unit === i ? cursor.word : 0; question = cursor && cursor.unit === i ? cursor.question || 0 : 0; progress.cursor = { unit, step, word, question }; save(); screen = "lesson"; lesson(); view.scrollTop = 0; };
+  const installPack = (i, pack) => {
+    const outline = units[i], first = pack.clips[0], reading = pack.reading;
+    units[i] = { ...outline, words: pack.words.map(item => [item.en, item.zh]),
+      examples: pack.examples.map(item => [item.en, item.zh]),
+      dialogue: [["A", first.a, first.aZh], ["B", first.b, first.bZh]],
+      listen: { prompt: first.prompt, options: first.options, answer: first.answer },
+      grammar: pack.grammar[0], reading: { en: reading.en, zh: reading.zh, ...reading.questions[0] },
+      output: pack.output, review: pack.grammar[2] };
+    more[i] = [pack.grammar[1], ...reading.questions.slice(1)];
+    clips[i] = pack.clips.slice(1).map(clip => ({ dialogue: [["A", clip.a, clip.aZh], ["B", clip.b, clip.bZh]],
+      prompt: clip.prompt, options: clip.options, answer: clip.answer }));
+  };
+  if (config.dynamic) Object.entries(progress.packs).forEach(([key, pack]) => {
+    const i = Number(key); if (Number.isInteger(i) && i >= 0 && i < units.length && validAdvancedPack(pack)) installPack(i, pack);
+  });
+  const prepareUnit = async (i, resume) => {
+    if (!config.dynamic || more[i]) return resume();
+    screen = "loading"; clean(); position.textContent = `第 ${i + 1}/${units.length} 单元 · 准备练习`;
+    html(`<h2>${esc(units[i].title)}</h2><p>${esc(units[i].goal)}</p><p>${esc(units[i].rule)}</p><p class="tip">首次打开此单元需要联网生成练习。通过内容检查后会保存在本机，以后可以离线重练。</p>`);
+    let code = "";
+    try { code = JSON.parse(localStorage.getItem("wordspring-ai-settings-v1") || "{}").passcode || ""; } catch { /* Settings can be entered again. */ }
+    if (!code) { feedback("请先在“AI 英语老师 → 服务设置”中填写访问口令。");
+      button("返回课程目录", overview, "secondary"); return; }
+    feedback("正在准备本单元的词汇、听力、语法、阅读和表达，请稍等……");
+    const controller = new AbortController(), current = ++checkId; checkController = controller;
+    const timeout = setTimeout(() => controller.abort(), 90000);
+    try {
+      const response = await fetch("https://wordspring-ai-pages.pages.dev/course", {
+        method: "POST", headers: { "content-type": "application/json", "x-wordspring-passcode": code },
+        body: JSON.stringify({ level: config.code, sequence: i, title: units[i].title, goal: units[i].goal, rule: units[i].rule }),
+        signal: controller.signal
+      });
+      const pack = await response.json();
+      if (!response.ok) throw new Error(pack.error || "课程准备失败。");
+      if (!validAdvancedPack(pack)) throw new Error("课程内容不完整，请再试一次。");
+      if (current !== checkId || screen !== "loading" || view.hidden) return;
+      progress.packs[i] = pack; installPack(i, pack); save(); resume();
+    } catch (error) {
+      if (current !== checkId || screen !== "loading" || view.hidden) return;
+      feedback(error.name === "AbortError" ? "等待超时，请再试一次。" : error.message || "网络暂时不可用，请再试一次。");
+      button("再试一次", () => prepareUnit(i, resume));
+      button("返回课程目录", overview, "secondary");
+    } finally { clearTimeout(timeout); if (current === checkId) checkController = null; }
+  };
+  const openUnit = i => { if (config.dynamic && !more[i]) return prepareUnit(i, () => openUnit(i));
+    unit = i; const cursor = progress.cursor; step = cursor && cursor.unit === i ? cursor.step : 0; word = cursor && cursor.unit === i ? cursor.word : 0; question = cursor && cursor.unit === i ? cursor.question || 0 : 0; progress.cursor = { unit, step, word, question }; save(); screen = "lesson"; lesson(); view.scrollTop = 0; };
   const answerGroups = () => progress.answers[unit] || (progress.answers[unit] = {});
   const solved = (group, index) => !!(answerGroups()[group] || [])[index];
   const markSolved = (group, index) => { const groups = answerGroups(); if (!groups[group]) groups[group] = []; groups[group][index] = true; save(); lesson(); };
@@ -186,7 +251,7 @@ function startCourse(config) {
   };
   const overview = () => {
     cancelCheck(); screen = "overview"; clean(); summary(); position.textContent = `阶段 ${stage} · ${label} · 建议每天 1 单元，约 30 分钟`;
-    html(`<h2>${esc(label)} 系统课程</h2><p>${units.length} 单元 · ${chapters.length} 个主题。先学知识点，再练词汇、三段听力、语法、阅读和表达；完成后隔天复习。题目与复习可离线使用，AI 批改需要联网。</p><p class="tip">进度只保存在这台设备，请定期导出备份。课程测评是站内学习记录，不等同于正式 CEFR 证书。</p>`);
+    html(`<h2>${esc(label)} 系统课程</h2><p>${units.length} 单元 · ${chapters.length} 个主题。先学知识点，再练词汇、三段听力、语法、阅读和表达；完成后隔天复习。${config.dynamic ? "新单元首次打开需联网生成并检查内容，保存后可离线重练。" : "题目与复习可离线使用。"}AI 批改需要联网。</p><p class="tip">进度只保存在这台设备，请定期导出备份。课程测评是站内学习记录，不等同于正式 CEFR 证书。</p>`);
     const next = firstUnfinished();
     if (next >= 0) button(progress.cursor ? "继续上次学习" : `开始第 ${next + 1} 单元`, () => openUnit(progress.cursor ? progress.cursor.unit : next));
     if (dueCount()) button(`复习到期单元（${dueCount()}）`, () => openReview(units.findIndex((_, i) => due(i))), "secondary");
@@ -268,7 +333,8 @@ function startCourse(config) {
     html(`<h2>完成了：${esc(item.title)}</h2><p>明天回来做第一次复习，再过 3 天做第二次复习。也可以随时重学这个单元。</p><p class="tip">你的表达：${esc(progress.outputs[unit])}</p>`);
     const next = firstUnfinished(); if (next >= 0) button(`学习第 ${next + 1} 单元 →`, () => openUnit(next));
     button("返回课程目录", overview, "secondary"); };
-  const openReview = i => { reviewUnit = i; reviewQuestion = 0; screen = "review"; renderReview(); };
+  const openReview = i => { if (config.dynamic && !more[i]) return prepareUnit(i, () => openReview(i));
+    reviewUnit = i; reviewQuestion = 0; screen = "review"; renderReview(); };
   const renderReview = () => { clean(); const item = units[reviewUnit]; const question = reviewQuestion === 0 ? item.grammar : item.review;
     position.textContent = `${item.title} · 间隔复习 ${reviewQuestion + 1}/2`;
     html(`<h2>回想后作答</h2><p>${esc(question.prompt)}</p>`);
@@ -282,7 +348,9 @@ function startCourse(config) {
     button("返回目录", overview, "secondary");
   };
   const examQuestionAt = n => { const item = units[examUnits[n]]; return n % 2 ? item.grammar : item.review; };
-  const startExam = () => { if (!progress.examDraft) progress.examDraft = { answers: Array(examUnits.length).fill(null), index: 0, writing: "" }; save();
+  const startExam = () => { if (config.dynamic) { const missing = examUnits.find(i => !more[i]);
+      if (missing !== undefined) return prepareUnit(missing, startExam); }
+    if (!progress.examDraft) progress.examDraft = { answers: Array(examUnits.length).fill(null), index: 0, writing: "" }; save();
     if (progress.examDraft.index === examUnits.length) renderExamWriting(); else renderExam(); };
   const renderExam = () => { if (screen === "exam-writing") cancelCheck(); screen = "exam"; clean(); const draft = progress.examDraft, n = draft.index;
     position.textContent = `阶段 ${stage} 综合测评 · 第 ${n + 1}/${examUnits.length} 题`;
@@ -338,5 +406,10 @@ if (typeof document !== "undefined") {
   startCourse({ key: A2_COURSE_KEY, prefix: "a2-course", stage: 2, label: "A2 基础", chapters: A2_CHAPTERS, units: A2_UNITS,
     more: A2_MORE, clips: A2_LISTENING_MORE, examUnits: [0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26], passScore: 12,
     examPrompt: "写 4—5 句英文：讲述一次过去的经历，说明一个未来计划，再给朋友一条建议。请大声朗读。" });
+  ADVANCED_STAGES.forEach((plan, index) => startCourse({ key: ADVANCED_COURSE_KEYS[index], prefix: `${plan.code}-course`,
+    stage: plan.stage, code: plan.code, label: plan.label, chapters: plan.chapterNames, units: plan.units,
+    examUnits: plan.units.map((_, i) => i).filter(i => i % 2 === 0), passScore: Math.ceil(plan.units.length * 0.4),
+    examPrompt: `围绕“${plan.chapters.at(-1).goal}”写一段 5—7 句的英文，说明事实、观点、理由和一个限制条件。请大声朗读。`,
+    dynamic: true }));
 }
-if (typeof module !== "undefined") module.exports = { COURSE_KEY, A2_COURSE_KEY, freshCourse, validCourse };
+if (typeof module !== "undefined") module.exports = { COURSE_KEY, A2_COURSE_KEY, ADVANCED_COURSE_KEYS, freshCourse, validCourse, validAdvancedPack };

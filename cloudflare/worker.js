@@ -64,6 +64,79 @@ const KNOWLEDGE_SCHEMAS = {
   reading: objectField({ lines: arrayField(objectField({ en: stringField, zh: stringField }), 8), questions: arrayField(knowledgeQuestion, 3) })
 };
 
+const courseText = objectField({ en: stringField, zh: stringField });
+const courseChoice = objectField({ prompt: stringField, options: arrayField(stringField, 3), answer: { type: "integer" } });
+const COURSE_SCHEMA = objectField({
+  words: arrayField(courseText, 6), examples: arrayField(courseText, 2),
+  clips: arrayField(objectField({ a: stringField, aZh: stringField, b: stringField, bZh: stringField,
+    prompt: stringField, options: arrayField(stringField, 3), answer: { type: "integer" } }), 3),
+  grammar: arrayField(objectField({ prompt: stringField, options: arrayField(stringField, 3),
+    answer: { type: "integer" }, why: stringField }), 3),
+  reading: objectField({ en: stringField, zh: stringField, questions: arrayField(courseChoice, 3) }),
+  output: objectField({ prompt: stringField, sample: stringField })
+});
+
+function validCoursePack(pack, level) {
+  const text = (value, max = 600) => typeof value === "string" && value.trim().length > 0 && value.length <= max;
+  const pair = item => item && text(item.en, 180) && text(item.zh, 220) && /[A-Za-z]/.test(item.en) && /[\u3400-\u9fff]/.test(item.zh);
+  const choice = item => item && text(item.prompt, 200) && Array.isArray(item.options) && item.options.length === 3 &&
+    item.options.every(option => text(option, 120)) && new Set(item.options.map(option => option.trim().toLowerCase())).size === 3 &&
+    Number.isInteger(item.answer) && item.answer >= 0 && item.answer < 3;
+  const count = value => (value.match(/[A-Za-z]+(?:'[A-Za-z]+)?/g) || []).length;
+  return pack && JSON.stringify(pack).length <= 14000 &&
+    Array.isArray(pack.words) && pack.words.length === 6 && pack.words.every(pair) &&
+    new Set(pack.words.map(item => item.en.toLowerCase().trim())).size === 6 &&
+    new Set(pack.words.map(item => item.zh.trim())).size === 6 &&
+    Array.isArray(pack.examples) && pack.examples.length === 2 && pack.examples.every(pair) &&
+    Array.isArray(pack.clips) && pack.clips.length === 3 && pack.clips.every(clip =>
+      clip && text(clip.a, 180) && text(clip.b, 180) && text(clip.aZh, 220) && text(clip.bZh, 220) && choice(clip)) &&
+    new Set(pack.clips.map(clip => `${clip.a} ${clip.b}`.toLowerCase())).size === 3 &&
+    Array.isArray(pack.grammar) && pack.grammar.length === 3 && pack.grammar.every(item => choice(item) && text(item.why, 220)) &&
+    new Set(pack.grammar.map(item => item.prompt.toLowerCase())).size === 3 &&
+    pack.reading && text(pack.reading.en, 1300) && text(pack.reading.zh, 1500) &&
+    count(pack.reading.en) >= ({ B1: 55, B2: 70, C1: 85, C2: 95 })[level] &&
+    Array.isArray(pack.reading.questions) && pack.reading.questions.length === 3 &&
+    pack.reading.questions.every(choice) &&
+    pack.output && text(pack.output.prompt, 240) && text(pack.output.sample, 650) &&
+    /[A-Za-z]/.test(pack.output.sample);
+}
+
+async function generateCourse(input, env, retry = false) {
+  const level = input.level.toUpperCase();
+  const model = retry ? TEACH_MODEL : KNOWLEDGE_MODEL;
+  const prompt = `Create ONE original ${level} English micro-lesson. The fixed title is "${input.title}". Learning goal: ${input.goal}. Exact teaching point: ${input.rule}. Focus every task on this point and a realistic situation appropriate for ${level}. Return only the JSON fields in the schema. Give 6 DIFFERENT useful English words or short phrases with accurate Simplified Chinese meanings; 2 natural example sentences with accurate translations; 3 DIFFERENT two-turn English dialogues, each with line-by-line Simplified Chinese and its OWN Chinese comprehension question; 3 distinct English grammar or usage multiple-choice questions with one defensible answer and a short specific Simplified Chinese explanation; one coherent ${level} English reading passage of ${level === "B1" ? "65–90" : level === "B2" ? "80–110" : level === "C1" ? "95–130" : "110–150"} words with an accurate Simplified Chinese translation and 3 distinct Chinese comprehension questions; one English writing/speaking task and a realistic English sample. Every question has exactly three distinct options, exactly one supported answer, and a 0-based answer index. Avoid questions about the first or last line of a passage. All Chinese MUST be mainland Simplified Chinese. No pronunciation score or claim of CEFR certification.${retry ? " The previous attempt failed format/content checks; pay special attention to all required fields and reading length." : ""}`;
+  const result = await env.AI.run(model, {
+    messages: [{ role: "system", content: prompt }, { role: "user", content: `生成第 ${input.sequence + 1} 单元：${input.title}。语法及理解题必须紧扣该知识点，不重复同一问题。` }],
+    response_format: { type: "json_schema", json_schema: COURSE_SCHEMA },
+    ...(retry ? { max_tokens: 3200 } : { chat_template_kwargs: { enable_thinking: false }, max_completion_tokens: 3200 }),
+    temperature: 0.35
+  });
+  let pack = retry ? result.response : result.choices?.[0]?.message?.content;
+  if (typeof pack === "string") { try { pack = JSON.parse(pack); } catch { return null; } }
+  if (!validCoursePack(pack, level)) return null;
+  if (!retry) {
+    const review = await env.AI.run(TEACH_MODEL, {
+      messages: [{ role: "system", content: "Review an English micro-lesson. Reject only a clear teaching error: incorrect English, inaccurate Chinese translation, a comprehension answer not supported by its dialogue or reading, or more than one defensible choice. Accept natural alternatives. Return JSON with valid boolean and a brief English reason." },
+        { role: "user", content: JSON.stringify({ level, title: input.title, rule: input.rule, pack }) }],
+      response_format: { type: "json_schema", json_schema: objectField({ valid: { type: "boolean" }, reason: stringField }) },
+      max_tokens: 80, temperature: 0.1
+    });
+    let verdict = review.response;
+    if (typeof verdict === "string") { try { verdict = JSON.parse(verdict); } catch { return null; } }
+    if (!verdict || verdict.valid !== true) return null;
+  }
+  const clean = value => simplify(value.trim());
+  return { words: pack.words.map(item => ({ en: item.en.trim(), zh: clean(item.zh) })),
+    examples: pack.examples.map(item => ({ en: item.en.trim(), zh: clean(item.zh) })),
+    clips: pack.clips.map(item => ({ a: item.a.trim(), aZh: clean(item.aZh), b: item.b.trim(), bZh: clean(item.bZh),
+      prompt: clean(item.prompt), options: item.options.map(clean), answer: item.answer })),
+    grammar: pack.grammar.map(item => ({ prompt: item.prompt.trim(), options: item.options.map(option => option.trim()),
+      answer: item.answer, why: clean(item.why) })),
+    reading: { en: pack.reading.en.trim(), zh: clean(pack.reading.zh),
+      questions: pack.reading.questions.map(item => ({ prompt: clean(item.prompt), options: item.options.map(clean), answer: item.answer })) },
+    output: { prompt: clean(pack.output.prompt), sample: pack.output.sample.trim() } };
+}
+
 function grammarQuestionMatches(topic, item) {
   const prompt = item.prompt;
   const options = item.options.map(option => option.toLowerCase());
@@ -327,6 +400,20 @@ export async function handleRequest(request, env) {
 
   const path = new URL(request.url).pathname;
   try {
+    if (path === "/course") {
+      if (Number(request.headers.get("content-length")) > 1800) return reply({ error: "课程请求太长。" }, 413);
+      const body = await request.text();
+      if (body.length > 1800) return reply({ error: "课程请求太长。" }, 413);
+      let input;
+      try { input = JSON.parse(body); } catch { return reply({ error: "课程请求无效。" }, 400); }
+      if (!input || !["b1", "b2", "c1", "c2"].includes(input.level) ||
+          !Number.isInteger(input.sequence) || input.sequence < 0 || input.sequence > 43 ||
+          !["title", "goal", "rule"].every(key => typeof input[key] === "string" && input[key].trim() && input[key].length <= 180))
+        return reply({ error: "课程请求无效。" }, 400);
+      let pack = await generateCourse(input, env);
+      if (!pack) pack = await generateCourse(input, env, true);
+      return pack ? reply(pack) : reply({ error: "这次课程内容未通过检查，请再试一次。" }, 502);
+    }
     if (path === "/chat") {
       if (Number(request.headers.get("content-length")) > 5000) return reply({ error: "对话太长。" }, 413);
       const body = await request.text();

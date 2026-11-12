@@ -81,14 +81,15 @@
     .choice[aria-pressed="true"] { border-color: #74942b; background: #eef8d7; }
     .choice:disabled { cursor: default; }
   </style>
-  <script src="./notebook.js?v=23" defer></script>
-  <script src="./listening.js?v=23" defer></script>
-  <script src="./knowledge.js?v=23" defer></script>
-  <script src="./ai-chat.js?v=23" defer></script>
-  <script src="./course-data.js?v=23" defer></script>
-  <script src="./a2-data.js?v=23" defer></script>
-  <script src="./course.js?v=23" defer></script>
-  <script src="./backup.js?v=23" defer></script>
+  <script src="./notebook.js?v=24" defer></script>
+  <script src="./listening.js?v=24" defer></script>
+  <script src="./knowledge.js?v=24" defer></script>
+  <script src="./ai-chat.js?v=24" defer></script>
+  <script src="./course-data.js?v=24" defer></script>
+  <script src="./a2-data.js?v=24" defer></script>
+  <script src="./advanced-data.js?v=24" defer></script>
+  <script src="./course.js?v=24" defer></script>
+  <script src="./backup.js?v=24" defer></script>
 </head>
 <body>
   <main class="shell">
@@ -96,8 +97,8 @@
     <h1>每天一点，<br>英语更近一点。</h1>
     <p class="sub">每天 30 分钟，听一段、说一句、解决一个问题。</p>
     <section class="ai-card course-card" aria-label="系统课程">
-      <p class="kicker">A1 入门 → A2 基础 · 共 52 单元</p><h2>系统课程</h2>
-      <p>按阶段学习日常英语。每单元先讲知识点，再练词汇、听力、语法、阅读和表达；完成后安排复习与阶段测评。</p>
+      <p class="kicker">A1 → A2 → B1 → B2 → C1 → C2</p><h2>系统课程</h2>
+      <p>六个阶段循序学习。每单元先讲知识点，再练词汇、听力、语法、阅读和表达；完成后安排复习与阶段测评。</p>
       <details class="course-stage-list"><summary>选择学习阶段</summary>
         <section class="stage-card" aria-label="A1 入门课程">
           <p class="kicker">阶段 1 · A1 入门 · 24 单元</p><h3>A1 入门</h3>
@@ -108,6 +109,26 @@
           <p class="kicker">阶段 2 · A2 基础 · 28 单元</p><h3>A2 基础</h3>
           <p>讲述过去经历、安排未来、解决日常问题并表达观点。</p>
           <p id="a2-course-summary">正在加载课程进度</p><button id="a2-course-open">进入 A2 →</button>
+        </section>
+        <section class="stage-card" aria-label="B1 进阶课程">
+          <p class="kicker">阶段 3 · B1 进阶 · 32 单元</p><h3>B1 进阶</h3>
+          <p>讲述经历、解释原因、提出建议，完成较长的日常交流。</p>
+          <p id="b1-course-summary">正在加载课程进度</p><button id="b1-course-open">进入 B1 →</button>
+        </section>
+        <section class="stage-card a2-card" aria-label="B2 中高阶课程">
+          <p class="kicker">阶段 4 · B2 中高阶 · 36 单元</p><h3>B2 中高阶</h3>
+          <p>比较证据、协商方案，练习有结构的论证与实用写作。</p>
+          <p id="b2-course-summary">正在加载课程进度</p><button id="b2-course-open">进入 B2 →</button>
+        </section>
+        <section class="stage-card" aria-label="C1 高阶课程">
+          <p class="kicker">阶段 5 · C1 高阶 · 40 单元</p><h3>C1 高阶</h3>
+          <p>分析隐含前提、精准表达立场，练习跨文本整合。</p>
+          <p id="c1-course-summary">正在加载课程进度</p><button id="c1-course-open">进入 C1 →</button>
+        </section>
+        <section class="stage-card a2-card" aria-label="C2 深度表达课程">
+          <p class="kicker">阶段 6 · C2 深度表达 · 44 单元</p><h3>C2 深度表达</h3>
+          <p>辨析细微语义与修辞，综合材料并调整表达风格。</p>
+          <p id="c2-course-summary">正在加载课程进度</p><button id="c2-course-open">进入 C2 →</button>
         </section>
       </details>
     </section>
@@ -145,7 +166,7 @@
       <p id="notebook-summary">正在加载错句</p><button id="notebook-open">打开错句本 →</button>
     </section>
     <details class="backup"><summary>学习进度备份</summary><div class="backup-content">
-      <p>备份包含 A1、A2 课程、知识学习、错句本、听力和任务对话进度。导出后请复制保存；恢复时粘贴备份文本再点击导入。</p>
+      <p>备份包含六阶段课程、知识学习、错句本、听力和任务对话进度。导出后请复制保存；恢复时粘贴备份文本再点击导入。</p>
       <textarea id="backup-text" aria-label="进度备份文本"></textarea>
       <div class="backup-actions"><button id="backup-export">导出并复制</button><button id="backup-import">导入备份</button></div>
       <p id="backup-message" role="status"></p>
@@ -200,6 +221,26 @@
       <p class="tip" id="a2-course-position" role="status"></p><div class="lesson-panel" id="a2-course-content"></div>
       <div class="lesson-footer course-footer" id="a2-course-actions"></div></div>
   </section>
+  <section class="overlay" id="b1-course-view" aria-label="B1 进阶课程" hidden>
+    <div class="overlay-inner"><div class="overlay-top"><strong>系统课程 · 阶段 3</strong><button id="b1-course-close">关闭</button></div>
+      <p class="tip" id="b1-course-position" role="status"></p><div class="lesson-panel" id="b1-course-content"></div>
+      <div class="lesson-footer course-footer" id="b1-course-actions"></div></div>
+  </section>
+  <section class="overlay" id="b2-course-view" aria-label="B2 中高阶课程" hidden>
+    <div class="overlay-inner"><div class="overlay-top"><strong>系统课程 · 阶段 4</strong><button id="b2-course-close">关闭</button></div>
+      <p class="tip" id="b2-course-position" role="status"></p><div class="lesson-panel" id="b2-course-content"></div>
+      <div class="lesson-footer course-footer" id="b2-course-actions"></div></div>
+  </section>
+  <section class="overlay" id="c1-course-view" aria-label="C1 高阶课程" hidden>
+    <div class="overlay-inner"><div class="overlay-top"><strong>系统课程 · 阶段 5</strong><button id="c1-course-close">关闭</button></div>
+      <p class="tip" id="c1-course-position" role="status"></p><div class="lesson-panel" id="c1-course-content"></div>
+      <div class="lesson-footer course-footer" id="c1-course-actions"></div></div>
+  </section>
+  <section class="overlay" id="c2-course-view" aria-label="C2 深度表达课程" hidden>
+    <div class="overlay-inner"><div class="overlay-top"><strong>系统课程 · 阶段 6</strong><button id="c2-course-close">关闭</button></div>
+      <p class="tip" id="c2-course-position" role="status"></p><div class="lesson-panel" id="c2-course-content"></div>
+      <div class="lesson-footer course-footer" id="c2-course-actions"></div></div>
+  </section>
 
   <section class="overlay" id="notebook-view" aria-label="我的错句本" hidden>
     <div class="overlay-inner"><div class="overlay-top"><strong>我的错句本</strong><button id="notebook-close">关闭</button></div>
@@ -212,6 +253,6 @@
       <p class="tip" id="listening-position"></p><div class="lesson-panel" id="listening-content"></div>
       <div class="lesson-footer" id="listening-actions"></div></div>
   </section>
-  <script>if ("serviceWorker" in navigator) navigator.serviceWorker.register("./sw.js?v=23").catch(() => {});</script>
+  <script>if ("serviceWorker" in navigator) navigator.serviceWorker.register("./sw.js?v=24").catch(() => {});</script>
 </body>
 </html>
